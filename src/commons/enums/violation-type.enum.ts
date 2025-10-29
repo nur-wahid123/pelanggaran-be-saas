@@ -1,0 +1,5 @@
+export enum ViolationTypeEnum {
+  COLLECTION = 'COLLECTION',
+  PER_STUDENT = 'PER_STUDENT',
+  PER_VIOLATION_TYPE = 'PER_VIOLATION_TYPE',
+}
