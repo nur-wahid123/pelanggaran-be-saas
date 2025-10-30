@@ -52,7 +52,7 @@ export class ViolationController {
       Number(payload.school_id),
     );
   }
-  
+
   @Get('detail/:id')
   findOne(@Param('id') id: string, @Payload() payload: JwtPayload) {
     return this.violationService.findOne(+id, Number(payload.school_id));
@@ -66,5 +66,11 @@ export class ViolationController {
       +payload.sub,
       Number(payload.school_id),
     );
+  }
+
+  @Delete('delete/all/vil')
+  @SetRole(RoleEnum.ADMIN)
+  removeAll(@Payload() payload: JwtPayload) {
+    return this.violationService.removeAll(+payload.sub);
   }
 }

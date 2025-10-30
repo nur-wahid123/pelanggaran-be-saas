@@ -22,7 +22,7 @@ import { SetRole } from 'src/commons/decorators/role.decorator';
 import { RoleEnum } from 'src/commons/enums/role.enum';
 
 @Controller('classes')
-@UseGuards(JwtAuthGuard,PermissionGuard)
+@UseGuards(JwtAuthGuard, PermissionGuard)
 export class ClassesController {
   constructor(private readonly classesService: ClassesService) {}
 
@@ -39,7 +39,7 @@ export class ClassesController {
       createClassDto,
     );
   }
-  
+
   @Get('list')
   findAll(
     @Query() query: FilterDto,
@@ -52,12 +52,12 @@ export class ClassesController {
       pageOptionsDto,
     );
   }
-  
+
   @Get('detail/:id')
   findOne(@Param('id') id: string, @Payload() payload: JwtPayload) {
     return this.classesService.findOne(+id, Number(payload.school_id));
   }
-  
+
   @Patch('update/:id')
   @SetRole(RoleEnum.ADMIN)
   update(
@@ -72,7 +72,7 @@ export class ClassesController {
       Number(payload.school_id),
     );
   }
-  
+
   @Delete('delete/:id')
   @SetRole(RoleEnum.ADMIN)
   remove(@Param('id') id: string, @Payload() payload: JwtPayload) {

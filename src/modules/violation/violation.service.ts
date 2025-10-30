@@ -12,9 +12,22 @@ import { QueryViolationDto } from './dto/query-violation.dto';
 import { instanceToPlain } from 'class-transformer';
 import { RedisService } from '../redis/redis.service';
 import { ViolationEntity } from 'src/entities/violation.entity';
+import { LogTypeEnum } from 'src/commons/enums/log-type.enum';
+import { LoggerService } from '../logger/logger.service';
 
 @Injectable()
 export class ViolationService {
+  async removeAll(userId: number) {
+    const res = await this.violationRepository.removeAll();
+    this.loggerService.crateLog({
+      type: LogTypeEnum.DELETE_VIOLATION,
+      userId,
+      message: 'Violation Delete All',
+    });
+    this.redis.updateRedis(this.cacheVersionName);
+    return res;
+  }
+
   async remove(id: number, userId: number, schoolId: number) {
     const violation = await this.violationRepository.findOne({
       where: { id, school: { id: schoolId } },
@@ -42,6 +55,12 @@ export class ViolationService {
       violation.violationTypes,
       schoolId,
     );
+    this.loggerService.crateLog({
+      type: LogTypeEnum.DELETE_VIOLATION,
+      userId,
+      metadata: { violation },
+      message: 'Violation Delete',
+    });
     return this.violationRepository.saveViolation(violation);
   }
 
@@ -98,14 +117,14 @@ export class ViolationService {
             students: {
               id: true,
               name: true,
-              nationalStudentId: true
+              nationalStudentId: true,
             },
             violationTypes: {
               id: true,
               point: true,
-              name: true
-            }
-          }
+              name: true,
+            },
+          },
         });
         if (!data) throw new NotFoundException('data tidak ditemukan');
         const transformed = instanceToPlain(data);
@@ -150,6 +169,7 @@ export class ViolationService {
   constructor(
     private readonly violationRepository: ViolationRepository,
     private readonly redis: RedisService,
+    private readonly loggerService: LoggerService,
   ) {}
 
   private readonly cacheVersionName = 'violation:version';
@@ -184,6 +204,12 @@ export class ViolationService {
     }
     this.redis.updateRedis(this.cacheVersionName);
     this.updateCorrelatedClass(students, violationTypes, schoolId);
+    this.loggerService.crateLog({
+      type: LogTypeEnum.CREATE_VIOLATION_SUCCESS,
+      userId,
+      metadata: { body },
+      message: 'Violation Create',
+    });
     const data = await this.violationRepository.createViolation(
       students,
       violationTypes,

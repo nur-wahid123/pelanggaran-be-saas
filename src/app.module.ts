@@ -20,6 +20,13 @@ import { JwtService } from '@nestjs/jwt';
 import { RedisModule } from './modules/redis/redis.module';
 import { RedisListenerService } from './modules/redis/redis-listener.service';
 import { RedisService } from './modules/redis/redis.service';
+import { LoggerModule } from './modules/logger/logger.module';
+import { ImageService } from './modules/image/image.service';
+import { ImageRepository } from './repositories/image.repository';
+import { ImageLinkRepository } from './repositories/image-link.repository';
+import { MinioService } from './modules/violation/minio.service';
+import { LoggerService } from './modules/logger/logger.service';
+import { LoggerRepository } from './repositories/logger.repository';
 
 @Module({
   imports: [
@@ -38,11 +45,18 @@ import { RedisService } from './modules/redis/redis.service';
     DashboardModule,
     SchoolModule,
     RedisModule,
+    LoggerModule,
   ],
   controllers: [AppController],
   providers: [
     JwtService,
     AppService,
+    ImageService,
+    ImageRepository,
+    ImageLinkRepository,
+    MinioService,
+    LoggerService,
+    LoggerRepository,
     ViolationRepository,
     ViolationService,
     ViolationModule,

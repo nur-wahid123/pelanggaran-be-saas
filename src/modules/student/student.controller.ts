@@ -41,7 +41,7 @@ export class StudentController {
       Number(payload.school_id),
     );
   }
-  
+
   @Post('create-batch')
   @SetRole(RoleEnum.ADMIN, RoleEnum.SUPERADMIN)
   createBatch(
@@ -54,7 +54,7 @@ export class StudentController {
       Number(payload.school_id),
     );
   }
-  
+
   @Get('list')
   findAll(
     @Query() query: FilterDto,
@@ -67,17 +67,20 @@ export class StudentController {
       Number(payload.school_id),
     );
   }
-  
+
   @Get('search-list')
-  findAllSearch(@Query() query: FilterDto, @Query() pageOptionsDto: PageOptionsDto) {
+  findAllSearch(
+    @Query() query: FilterDto,
+    @Query() pageOptionsDto: PageOptionsDto,
+  ) {
     return this.studentService.findAllSearch(query, pageOptionsDto);
   }
-  
+
   @Get('detail/:id')
   findOne(@Param('id') id: string, @Payload() payload: JwtPayload) {
     return this.studentService.findOne(id, Number(payload.school_id));
   }
-  
+
   @Patch('update/:id')
   @SetRole(RoleEnum.ADMIN, RoleEnum.SUPERADMIN)
   update(
@@ -91,7 +94,7 @@ export class StudentController {
       Number(payload.school_id),
     );
   }
-  
+
   @Delete('delete/:id')
   @SetRole(RoleEnum.ADMIN, RoleEnum.SUPERADMIN)
   remove(@Param('id') id: string, @Payload() payload: JwtPayload) {

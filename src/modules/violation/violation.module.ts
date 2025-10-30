@@ -8,6 +8,8 @@ import { ImageLinkRepository } from 'src/repositories/image-link.repository';
 import { MinioService } from './minio.service';
 import { JwtService } from '@nestjs/jwt';
 import { RedisService } from '../redis/redis.service';
+import { LoggerService } from '../logger/logger.service';
+import { LoggerRepository } from 'src/repositories/logger.repository';
 
 @Module({
   controllers: [ViolationController],
@@ -20,6 +22,8 @@ import { RedisService } from '../redis/redis.service';
     JwtService,
     ViolationRepository,
     RedisService,
+    LoggerService,
+    LoggerRepository,
   ],
 })
 export class ViolationModule {}

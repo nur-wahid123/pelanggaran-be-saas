@@ -31,6 +31,16 @@ export class UserService {
     this.redis.del(`school:findoneSuper:${schoolId}`);
   }
 
+  async getLogs(userId: number, pageOptionsDto: PageOptionsDto) {
+    const [data, itemCount] = await this.userRepository.getLogs(
+      userId,
+      pageOptionsDto,
+    );
+    const meta = new PageMetaDto({ pageOptionsDto, itemCount });
+
+    return new PageDto(data, meta);
+  }
+
   async remove(id: number, userId: number, schoolId: number) {
     const user: UserEntity = await this.userRepository.findOne({
       where: { id, school: { id: schoolId } },

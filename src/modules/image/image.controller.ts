@@ -34,11 +34,16 @@ export class ImageController {
   @Get('get/:imageId')
   @UseInterceptors(NoTransformInterceptor) // custom empty one
   async getImage(@Param('imageId') imageId: string) {
-    const { stream, image } = await this.imageService.getStream(+imageId);
-    return new StreamableFile(stream, {
-      type: image.mimetype,
-      disposition: `inline; filename="${image.originalName}"`,
-    });
+    try {
+      const { stream, image } = await this.imageService.getStream(+imageId);
+      return new StreamableFile(stream, {
+        type: image.mimetype,
+        disposition: `inline; filename="${image.originalName}"`,
+      });
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
 
   @Patch(':id')

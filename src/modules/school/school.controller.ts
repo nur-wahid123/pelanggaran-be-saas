@@ -12,7 +12,6 @@ import {
 import { SchoolService } from './school.service';
 import { CreateSchoolDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
-import { JwtAuthGuard } from '../../commons/guards/jwt-auth.guard';
 import { SetRole } from '../../commons/decorators/role.decorator';
 import { RoleEnum } from '../../commons/enums/role.enum';
 import { Payload } from '../../commons/decorators/payload.decorator';

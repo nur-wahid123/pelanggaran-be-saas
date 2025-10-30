@@ -12,11 +12,40 @@ import { StudentEntity } from 'src/entities/student.entity';
 import { UserEntity } from 'src/entities/user.entity';
 import { ViolationTypeEntity } from 'src/entities/violation-type.entity';
 import { ViolationEntity } from 'src/entities/violation.entity';
+import { ImageService } from 'src/modules/image/image.service';
 import { QueryViolationDto } from 'src/modules/violation/dto/query-violation.dto';
 import { DataSource, Repository } from 'typeorm';
 
 @Injectable()
 export class ViolationRepository extends Repository<ViolationEntity> {
+  async removeAll() {
+    const qr = this.datasource.createQueryRunner();
+    try {
+      await qr.connect();
+      await qr.startTransaction();
+      const allViolations = await qr.manager
+        .createQueryBuilder(ViolationEntity, 'violation')
+        .leftJoin('violation.image', 'image')
+        .select(['violation.id', 'image.id'])
+        .getMany();
+      const allImageIds = allViolations
+        .filter((v) => v.image !== null && v.image !== undefined)
+        .map((v) => v.image.id);
+      await Promise.all(
+        allImageIds.map((id) => this.imageService.removeQr(id, qr)),
+      );
+      await qr.manager.remove(allViolations);
+      await qr.commitTransaction();
+      return true;
+    } catch (error) {
+      await qr.rollbackTransaction();
+      console.log(error);
+      throw new InternalServerErrorException('internal server error');
+    } finally {
+      await qr.release();
+    }
+  }
+
   async createViolation(
     students: StudentEntity[],
     violationTypes: ViolationTypeEntity[],
@@ -78,6 +107,7 @@ export class ViolationRepository extends Repository<ViolationEntity> {
       await qR.release();
     }
   }
+
   async saveViolation(violation: ViolationEntity) {
     const queryRunner = this.datasource.createQueryRunner();
     await queryRunner.connect();
@@ -148,7 +178,7 @@ export class ViolationRepository extends Repository<ViolationEntity> {
       .leftJoin('vi.violationTypes', 'violationType')
       .leftJoin('vi.image', 'image')
       .leftJoin('image.images', 'images')
-      .leftJoin('vi.school','school')
+      .leftJoin('vi.school', 'school')
       .select('vi.id')
       .where((qb) => {
         qb.andWhere('school.id = :schoolId', { schoolId });
@@ -171,9 +201,9 @@ export class ViolationRepository extends Repository<ViolationEntity> {
           );
         }
         if (startDate && finishDate) {
-          qb.andWhere('vi.date BETWEEN :startDate AND :finishDate', {
-            startDate,
-            finishDate,
+          qb.andWhere(`vi.date BETWEEN :startDate AND :finishDate`, {
+            startDate: `${startDate} 00:00:00`,
+            finishDate: `${finishDate} 23:59:59`,
           });
         }
       });
@@ -194,15 +224,15 @@ export class ViolationRepository extends Repository<ViolationEntity> {
       .leftJoin('vi.violationTypes', 'violationType')
       .leftJoin('vi.image', 'image')
       .leftJoin('image.images', 'images')
-      .leftJoin('vi.school','school')
+      .leftJoin('vi.school', 'school')
       .select(['violationType.id', 'violationType.point', 'violationType.name'])
       .addSelect(['student.name', 'student.id'])
       .addSelect(['image.id', 'images.id', 'images.key'])
-      .addSelect(['vi.createdAt', 'vi.date','vi.id'])
-      .addSelect(['creator.name','creator.id'])
+      .addSelect(['vi.createdAt', 'vi.date', 'vi.id'])
+      .addSelect(['creator.name', 'creator.id'])
       .where(ids.length ? 'vi.id IN (:...ids)' : '1=0', { ids });
 
-      qB2.orderBy('vi.id', 'DESC');
+    qB2.orderBy('vi.id', 'DESC');
     return qB2.getManyAndCount();
   }
 
@@ -220,7 +250,7 @@ export class ViolationRepository extends Repository<ViolationEntity> {
       .leftJoin('vi.creator', 'creator')
       .leftJoin('vi.students', 'student')
       .select(['violationTypes.id'])
-      .leftJoin('vi.school','school')
+      .leftJoin('vi.school', 'school')
       .where((qb) => {
         qb.andWhere('school.id = :schoolId', { schoolId }); // Filter by schoolId
         if (studentId) {
@@ -242,7 +272,10 @@ export class ViolationRepository extends Repository<ViolationEntity> {
           );
         }
         if (startDate && finishDate) {
-          qb.andWhere(`vi.date BETWEEN '${startDate}' AND '${finishDate}'`);
+          qb.andWhere(`vi.date BETWEEN :startDate AND :finishDate`, {
+            startDate: `${startDate} 00:00:00`,
+            finishDate: `${finishDate} 23:59:59`,
+          });
         }
       });
 
@@ -257,8 +290,12 @@ export class ViolationRepository extends Repository<ViolationEntity> {
       .createQueryBuilder(ViolationTypeEntity, 'violationTypes')
       .leftJoin('violationTypes.violations', 'vi')
       .leftJoin('vi.students', 'student')
-      .select(['violationTypes.name', 'violationTypes.point', 'violationTypes.id'])
-      .leftJoin('vi.school','school')
+      .select([
+        'violationTypes.name',
+        'violationTypes.point',
+        'violationTypes.id',
+      ])
+      .leftJoin('vi.school', 'school')
       .addSelect(['student.name', 'student.id'])
       .addSelect(['vi.createdAt', 'vi.id'])
       .where(ids.length ? 'violationTypes.id IN (:...ids)' : '1=0', { ids });
@@ -280,7 +317,7 @@ export class ViolationRepository extends Repository<ViolationEntity> {
       .leftJoin('vi.creator', 'creator')
       .leftJoin('st.studentClass', 'studentClass')
       .leftJoin('vi.violationTypes', 'violationTypes')
-      .leftJoin('vi.school','school')
+      .leftJoin('vi.school', 'school')
       .select(['st.id'])
       .where((qb) => {
         qb.andWhere('school.id = :schoolId', { schoolId }); // Filter by schoolId
@@ -301,7 +338,10 @@ export class ViolationRepository extends Repository<ViolationEntity> {
           );
         }
         if (startDate && finishDate) {
-          qb.andWhere(`vi.date BETWEEN '${startDate}' AND '${finishDate}'`);
+          qb.andWhere(`vi.date BETWEEN :startDate AND :finishDate`, {
+            startDate: `${startDate} 00:00:00`,
+            finishDate: `${finishDate} 23:59:59`,
+          });
         }
       });
 
@@ -317,9 +357,18 @@ export class ViolationRepository extends Repository<ViolationEntity> {
       .leftJoin('st.violations', 'vi')
       .leftJoin('st.studentClass', 'studentClass')
       .leftJoin('vi.violationTypes', 'violationTypes')
-      .leftJoin('vi.school','school')
-      .select(['violationTypes.name', 'violationTypes.point', 'violationTypes.id'])
-      .addSelect(['st.name', 'st.nationalStudentId', 'st.schoolStudentId', 'st.id'])
+      .leftJoin('vi.school', 'school')
+      .select([
+        'violationTypes.name',
+        'violationTypes.point',
+        'violationTypes.id',
+      ])
+      .addSelect([
+        'st.name',
+        'st.nationalStudentId',
+        'st.schoolStudentId',
+        'st.id',
+      ])
       .addSelect(['vi.createdAt', 'vi.id'])
       .addSelect(['studentClass.name', 'studentClass.id'])
       .where(ids.length ? 'st.id IN (:...ids)' : '1=0', { ids });
@@ -352,7 +401,10 @@ export class ViolationRepository extends Repository<ViolationEntity> {
     qb.andWhere('school.id = :schoolId', { schoolId });
     return qb.getMany();
   }
-  constructor(private readonly datasource: DataSource) {
+  constructor(
+    private readonly datasource: DataSource,
+    private readonly imageService: ImageService,
+  ) {
     super(ViolationEntity, datasource.createEntityManager());
   }
 }

@@ -7,6 +7,9 @@ import { UpdateImageDto } from './dto/update-image.dto';
 import { MinioService } from '../violation/minio.service';
 import { ImageRepository } from 'src/repositories/image.repository';
 import { ImageLinkRepository } from 'src/repositories/image-link.repository';
+import { QueryRunner } from 'typeorm';
+import { ImageLinks } from 'src/entities/image-links.entity';
+import { ImageEntity } from 'src/entities/image.entity';
 
 @Injectable()
 export class ImageService {
@@ -29,6 +32,37 @@ export class ImageService {
 
   async processAndUpload(files: Express.Multer.File[]): Promise<number> {
     return this.imageLinkRepository.processAndUpload(files);
+  }
+
+  async removeQr(id: number, qr: QueryRunner) {
+    try {
+      const imageLink = await qr.manager.findOne(ImageLinks, {
+        where: { id },
+        relations: { images: true },
+      });
+      if (!imageLink) {
+        throw new NotFoundException('Image not found');
+      }
+      if (Array.isArray(imageLink.images)) {
+        for (const image of imageLink.images) {
+          try {
+            await this.minio.deleteObject(image.key);
+          } catch (e) {
+            // Log and continue deleting DB record even if minio deletion fails
+            console.error(
+              `Failed to delete object from Minio: ${image.key}`,
+              e,
+            );
+          }
+          await qr.manager.delete(ImageEntity, image.id);
+        }
+      }
+      await qr.manager.delete(ImageLinks, id);
+      return true;
+    } catch (error) {
+      console.log(error);
+      throw new InternalServerErrorException('internal server error');
+    }
   }
 
   findAll() {

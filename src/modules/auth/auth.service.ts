@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   UnauthorizedException,
@@ -14,6 +13,8 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtPayload } from './jwt-payload.interface';
 import { RoleEnum } from 'src/commons/enums/role.enum';
 import { EditProfileDto } from './dto/edit-profile.dto';
+import { LoggerService } from '../logger/logger.service';
+import { LogTypeEnum } from 'src/commons/enums/log-type.enum';
 
 @Injectable()
 export class AuthService {
@@ -69,12 +70,19 @@ export class AuthService {
     if (body.email) user.email = body.email;
     if (body.name) user.name = body.name;
 
+    this.loggerService.crateLog({
+      type: LogTypeEnum.EDIT_SELF,
+      userId: user.id,
+      metadata: { body },
+      message: 'User Edit Profil',
+    });
     return this.userRepository.saveUser(user);
   }
 
   constructor(
     private readonly jwtService: JwtService,
     private readonly userRepository: UserRepository,
+    private readonly loggerService: LoggerService,
   ) {}
 
   async editPassword(body: ResetPasswordDto, userId: number, schoolId: number) {
@@ -93,6 +101,12 @@ export class AuthService {
       user.password = await this.userRepository.generatePassword(
         body.newPassword,
       );
+      this.loggerService.crateLog({
+        type: LogTypeEnum.EDIT_PASSWORD,
+        userId: user.id,
+        metadata: { body },
+        message: 'User Edit Password',
+      });
       return this.userRepository.saveUser(user);
     }
     throw new UnauthorizedException('Please login first.');
@@ -149,15 +163,28 @@ export class AuthService {
     const { username } = dto;
     try {
       const user = await this.userRepository.findUserByUsername(username);
-      if(user.role !== RoleEnum.SUPERADMIN && !user.school.isActive){
-        throw new BadRequestException('Sekolah Tidak Aktif Silahkan hubungi Admin 087743886185')
+      if (user.role !== RoleEnum.SUPERADMIN && !user.school.isActive) {
+        throw new BadRequestException(
+          'Sekolah Tidak Aktif Silahkan hubungi Admin 087743886185',
+        );
       }
       const payload = await this.userRepository.validateUser(dto);
 
       const token = await this.getToken(payload);
+      this.loggerService.crateLog({
+        type: LogTypeEnum.LOGIN_ATTEMPT_SUCCESS,
+        userId: payload.id,
+        metadata: { payload, dto },
+        message: 'User Login Successfully',
+      });
       return token;
     } catch (error) {
       console.log(error);
+      this.loggerService.crateLog({
+        type: LogTypeEnum.LOGIN_ATTEMPT_FAILED,
+        message: 'User Login Failed',
+        metadata: { dto, error },
+      });
       throw error;
     }
   }

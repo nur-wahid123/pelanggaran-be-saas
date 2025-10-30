@@ -140,7 +140,7 @@ export class ClassesService {
     );
     this.redis.del(`class:findone:${JSON.stringify({ id, school_id })}`);
     this.redis.updateRedis(this.cacheVersionName);
-    return this.classRepository.saveClass(newDt);
+    return this.classRepository.saveClass(newDt, 'update');
   }
 
   async remove(id: number, userId: number, school_id: number) {
@@ -163,6 +163,6 @@ export class ClassesService {
     );
     this.redis.del(`class:findone:${JSON.stringify({ id, school_id })}`);
     this.redis.updateRedis(this.cacheVersionName);
-    return this.classRepository.saveClass(newDt);
+    return this.classRepository.saveClass(newDt, 'delete');
   }
 }

@@ -41,7 +41,7 @@ export class ViolationTypeController {
       Number(payload.school_id),
     );
   }
-  
+
   @Post('create-batch')
   @SetRole(RoleEnum.ADMIN)
   createBatch(
@@ -54,7 +54,7 @@ export class ViolationTypeController {
       Number(payload.school_id),
     );
   }
-  
+
   @Get('list')
   findAll(
     @Query() query: QueryViolationTypeDto,
@@ -67,12 +67,12 @@ export class ViolationTypeController {
       Number(payload.school_id),
     );
   }
-  
+
   @Get('detail/:id')
   findOne(@Param('id') id: string, @Payload() payload: JwtPayload) {
     return this.violationTypeService.findOne(+id, Number(payload.school_id));
   }
-  
+
   @Patch('update/:id')
   @SetRole(RoleEnum.ADMIN)
   update(
@@ -87,7 +87,7 @@ export class ViolationTypeController {
       Number(payload.school_id),
     );
   }
-  
+
   @Delete('delete/:id')
   @SetRole(RoleEnum.ADMIN)
   remove(@Param('id') id: string, @Payload() payload: JwtPayload) {

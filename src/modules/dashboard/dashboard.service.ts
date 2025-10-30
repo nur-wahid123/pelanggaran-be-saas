@@ -32,12 +32,18 @@ export class DashboardService {
       const { startDate, finishDate } = dateRange;
 
       // Get total schools
-      const totalActiveSchool = await this.datasource.manager.count(SchoolEntity, {
-        where: { isActive: true },
-      });
-      const totalInactiveSchool = await this.datasource.manager.count(SchoolEntity, {
-        where: { isActive: false },
-      });
+      const totalActiveSchool = await this.datasource.manager.count(
+        SchoolEntity,
+        {
+          where: { isActive: true },
+        },
+      );
+      const totalInactiveSchool = await this.datasource.manager.count(
+        SchoolEntity,
+        {
+          where: { isActive: false },
+        },
+      );
 
       // Get total violations
       const totalViolationsQuery = this.datasource

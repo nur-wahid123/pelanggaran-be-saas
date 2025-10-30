@@ -40,6 +40,14 @@ export class UserController {
     );
   }
 
+  @Get('logs')
+  getLogs(
+    @Payload() payload: JwtPayload,
+    @Query() pageOptionsDto: PageOptionsDto,
+  ) {
+    return this.userService.getLogs(Number(payload.sub), pageOptionsDto);
+  }
+
   @Get('detail/:id')
   @SetRole(RoleEnum.ADMIN)
   findOne(@Param('id') id: string, @Payload() payload: JwtPayload) {

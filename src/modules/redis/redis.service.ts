@@ -7,7 +7,7 @@ export class RedisService {
   private readonly ttl: number;
 
   constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis) {
-    redis.reset()
+    redis.reset();
     this.enabled = process.env.USE_REDIS === 'true';
     this.ttl = process.env.REDIS_TTL ? Number(process.env.REDIS_TTL) : 20;
   }

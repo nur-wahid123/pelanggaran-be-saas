@@ -43,23 +43,28 @@ export class MinioService {
     }
   }
   async getObjectStream(key: string): Promise<Readable> {
-    const cmd = new GetObjectCommand({
-      Bucket: this.bucket,
-      Key: key,
-    });
-    const res = await this.client.send(cmd);
+    try {
+      const cmd = new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+      });
+      const res = await this.client.send(cmd);
 
-    // If Body is already Node.js Readable
-    if (res.Body instanceof Readable) {
-      return res.Body;
+      // If Body is already Node.js Readable
+      if (res.Body instanceof Readable) {
+        return res.Body;
+      }
+
+      // If Body is a web stream (ReadableStream)
+      if (res.Body && typeof (res.Body as any).getReader === 'function') {
+        return Readable.fromWeb(res.Body as any);
+      }
+
+      throw new Error('Unsupported stream type from MinIO');
+    } catch (error) {
+      console.log(error);
+      throw error;
     }
-
-    // If Body is a web stream (ReadableStream)
-    if (res.Body && typeof (res.Body as any).getReader === 'function') {
-      return Readable.fromWeb(res.Body as any);
-    }
-
-    throw new Error('Unsupported stream type from MinIO');
   }
 
   async deleteObject(key: string) {

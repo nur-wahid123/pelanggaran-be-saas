@@ -7,7 +7,9 @@ import {
 } from '@nestjs/common';
 import { FilterDto } from 'src/commons/dto/filter.dto';
 import { PageOptionsDto } from 'src/commons/dto/page-option.dto';
+import { Order } from 'src/commons/enums/order.enum';
 import HashPassword from 'src/commons/utils/hash-password.util';
+import { LoggerEntity } from 'src/entities/logger.entity';
 import { SchoolEntity } from 'src/entities/school.entity';
 import { UserEntity } from 'src/entities/user.entity';
 import { UserLoginDto } from 'src/modules/auth/dto/login-user.dto';
@@ -41,6 +43,22 @@ export class UserRepository extends Repository<UserEntity> {
     return qB.getManyAndCount();
   }
 
+  getLogs(userId: number, pageOptionsDto: PageOptionsDto) {
+    const qb = this.datasource
+      .createQueryBuilder(LoggerEntity, 'logger')
+      .leftJoin('logger.user', 'user')
+      .select(['logger.id', 'logger.message', 'logger.date'])
+      .where((qB) => {
+        qB.andWhere('user.id = :userId', { userId });
+      });
+    const { skip, page, take } = pageOptionsDto;
+    if (page && take) {
+      qb.skip(skip).take(take);
+    }
+    qb.orderBy('logger.id', Order.DESC);
+    return qb.getManyAndCount();
+  }
+
   async saveSuper(newUser: UserEntity): Promise<UserEntity> {
     const queryRunner = this.datasource.createQueryRunner();
     try {
@@ -59,7 +77,7 @@ export class UserRepository extends Repository<UserEntity> {
   }
 
   async saveUser(newUser: UserEntity): Promise<UserEntity> {
-    const queryRunner = this.datasource.createQueryRunner()
+    const queryRunner = this.datasource.createQueryRunner();
     try {
       await queryRunner.connect();
       await queryRunner.startTransaction();
@@ -141,7 +159,13 @@ export class UserRepository extends Repository<UserEntity> {
         email: true,
         role: true,
         password: true,
-        school: { id: true, isDemo: true, startDate: true, isActive: true, image: true },
+        school: {
+          id: true,
+          isDemo: true,
+          startDate: true,
+          isActive: true,
+          image: true,
+        },
       },
     });
     if (!user) {

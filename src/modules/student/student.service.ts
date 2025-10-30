@@ -18,6 +18,8 @@ import { PageDto } from 'src/commons/dto/page.dto';
 import { SchoolEntity } from '../../entities/school.entity';
 import { instanceToPlain } from 'class-transformer';
 import { RedisService } from '../redis/redis.service';
+import { LoggerService } from '../logger/logger.service';
+import { LogTypeEnum } from 'src/commons/enums/log-type.enum';
 
 @Injectable()
 export class StudentService {
@@ -69,6 +71,12 @@ export class StudentService {
     createStudentDto: CreateStudentBatchDto,
     schoolId: number,
   ) {
+    this.loggerService.crateLog({
+      type: LogTypeEnum.IMPORT_STUDENT,
+      userId,
+      metadata: { createStudentDto: createStudentDto.items.length + 'siswa' },
+      message: 'Student import',
+    });
     this.redis.updateRedis(this.cacheVersionName);
     return this.studentRepository.saveStudents(
       userId,
@@ -80,6 +88,7 @@ export class StudentService {
   constructor(
     private readonly studentRepository: StudentRepository,
     private readonly redis: RedisService,
+    private readonly loggerService: LoggerService,
   ) {}
 
   async create(
@@ -110,6 +119,12 @@ export class StudentService {
     student.school = school;
     student.schoolStudentId = nis;
     this.redis.updateRedis(this.cacheVersionName);
+    this.loggerService.crateLog({
+      type: LogTypeEnum.CREATE_STUDENT_SUCCESS,
+      userId,
+      metadata: { createStudentDto },
+      message: 'Student Create',
+    });
     await this.studentRepository.saveStudent(student, schoolId);
     return student;
   }
@@ -123,7 +138,10 @@ export class StudentService {
       try {
         const data = await this.studentRepository.findOne({
           where: { nationalStudentId: id, school: { id: schoolId } },
-          relations: { studentClass: true, violations: { violationTypes: true } },
+          relations: {
+            studentClass: true,
+            violations: { violationTypes: true },
+          },
           select: {
             id: true,
             name: true,
@@ -137,10 +155,10 @@ export class StudentService {
               id: true,
               violationTypes: {
                 id: true,
-                point: true
-              }
-            }
-          }
+                point: true,
+              },
+            },
+          },
         });
         if (!data) {
           throw new NotFoundException('student not found');
@@ -215,7 +233,7 @@ export class StudentService {
         return d.id;
       }),
       student.studentClass.id,
-      schoolId
+      schoolId,
     );
     this.redis.del(`students:findone:${JSON.stringify({ id, schoolId })}`);
     this.redis.updateRedis(this.cacheVersionName);
@@ -235,7 +253,7 @@ export class StudentService {
         violations: { id: true },
         studentClass: {
           id: true,
-        }
+        },
       },
     });
     if (!data) {
@@ -255,10 +273,16 @@ export class StudentService {
         return d.id;
       }),
       data.studentClass.id,
-      schoolId
+      schoolId,
     );
     this.redis.del(`students:findone:${JSON.stringify({ id, schoolId })}`);
     this.redis.updateRedis(this.cacheVersionName);
+    this.loggerService.crateLog({
+      type: LogTypeEnum.DELETE_STUDENT,
+      userId,
+      metadata: { id },
+      message: 'Student Delete',
+    });
     return this.studentRepository.saveStudent(data, schoolId);
   }
 }

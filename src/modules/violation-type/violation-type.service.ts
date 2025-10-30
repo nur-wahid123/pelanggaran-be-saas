@@ -17,6 +17,8 @@ import { QueryViolationTypeDto } from './dto/query-violation-type.dto';
 import { SchoolEntity } from 'src/entities/school.entity';
 import { instanceToPlain } from 'class-transformer';
 import { RedisService } from '../redis/redis.service';
+import { LoggerService } from '../logger/logger.service';
+import { LogTypeEnum } from 'src/commons/enums/log-type.enum';
 
 @Injectable()
 export class ViolationTypeService {
@@ -25,6 +27,12 @@ export class ViolationTypeService {
     createViolationTypeDto: CreateViolationTypeBatchDto,
     schoolId: number,
   ) {
+    this.loggerService.crateLog({
+      type: LogTypeEnum.IMPORT_VIOLATION_TYPE,
+      userId,
+      metadata: { createViolationTypeDto },
+      message: 'Violation Type import',
+    });
     this.redis.updateRedis(this.cacheNameVersion);
     return this.violationTypeRepository.saveViolations(
       userId,
@@ -56,6 +64,12 @@ export class ViolationTypeService {
       violationType,
       schoolId,
     );
+    this.loggerService.crateLog({
+      type: LogTypeEnum.CREATE_VIOLATION_TYPE_SUCCESS,
+      userId,
+      metadata: { createViolationTypeDto },
+      message: 'Violation Type Create',
+    });
     this.redis.updateRedis(this.cacheNameVersion);
     return violationType;
   }
@@ -63,6 +77,7 @@ export class ViolationTypeService {
   constructor(
     private readonly violationTypeRepository: ViolationTypeRepository,
     private readonly redis: RedisService,
+    private readonly loggerService: LoggerService,
   ) {}
 
   private readonly cacheNameVersion = `violation-type:version`;
@@ -115,13 +130,13 @@ export class ViolationTypeService {
             violations: {
               id: true,
               students: true,
-            }
-          }
+            },
+          },
         });
-        if (!data) throw new NotFoundException('data tidak ditemukan')
+        if (!data) throw new NotFoundException('data tidak ditemukan');
         this.redis.set(cacheKey, JSON.stringify(data));
         return data;
-      } catch (error) {        
+      } catch (error) {
         throw error;
       }
     }
@@ -161,6 +176,12 @@ export class ViolationTypeService {
       schoolId,
     );
     await this.violationTypeRepository.saveViolationType(violationType);
+    this.loggerService.crateLog({
+      type: LogTypeEnum.UPDATE_VIOLATION_TYPE,
+      userId,
+      metadata: { updateViolationTypeDto, id },
+      message: 'Violation Type Update',
+    });
     return violationType;
   }
 
@@ -186,6 +207,12 @@ export class ViolationTypeService {
       schoolId,
     );
     await this.violationTypeRepository.saveDeleteViolationType(violationType);
+    this.loggerService.crateLog({
+      type: LogTypeEnum.DELETE_VIOLATION_TYPE,
+      userId,
+      metadata: { id },
+      message: 'Violation Type Delete',
+    });
     return violationType;
   }
 }

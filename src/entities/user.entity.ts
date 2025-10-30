@@ -10,6 +10,7 @@ import { RoleEnum } from './../commons/enums/role.enum';
 import { ViolationEntity } from './violation.entity';
 import { SchoolEntity } from './school.entity';
 import { Exclude, Expose } from 'class-transformer';
+import { LoggerEntity } from './logger.entity';
 
 @Entity('users')
 export class UserEntity extends CommonBaseEntity {
@@ -41,4 +42,7 @@ export class UserEntity extends CommonBaseEntity {
 
   @ManyToOne(() => SchoolEntity, { nullable: true })
   public school: SchoolEntity;
+
+  @OneToMany(() => LoggerEntity, (logger) => logger.user)
+  public logs: LoggerEntity[];
 }
