@@ -3,7 +3,7 @@ name: Deploy to VM Broo
 on:
   push:
     branches:
-      - master  # Adjust this to your deployment branch
+      - master
 
 jobs:
   build-and-upload-to-docker-hub:
@@ -26,38 +26,33 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: true
-          tags: indrafajar/pelanggaran-be:latest  # Update this
+          tags: indrafajar/pelanggaran-be-saas:latest  # Update this
           no-cache: true
     
   deploy-vm:
     runs-on: ubuntu-latest
     needs: build-and-upload-to-docker-hub
     steps:
+      - name: Start ssh-agent and add key
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.VM_SSH_KEY }}
       - name: Deploy to VM
         env:
           HOST: ${{ secrets.VM_HOST }}  # Update with your VM IP
           USER: ${{ secrets.VM_USERNAME }}
-          PASSWORD: ${{ secrets.VM_PASSWORD }}
+          PORT: ${{ secrets.VM_PORT }}
         run: |
-          sshpass -p "${PASSWORD}" ssh -o StrictHostKeyChecking=no $USER@$HOST << 'EOF'
-            docker pull indrafajar/pelanggaran-be:latest
-            if [ "$(docker ps -q -f name=pelanggaran-run)" ]; then
-              docker stop pelanggaran-run
+          ssh -o StrictHostKeyChecking=no -p "${PORT}" $USER@$HOST << 'EOF'
+            podman pull docker.io/indrafajar/pelanggaran-be-saas:latest
+            if [ "$(podman ps -q -f name=pelanggaran-run)" ]; then
+              podman stop pelanggaran-run
             fi
-            if [ "$(docker ps -aq -f name=pelanggaran-run)" ]; then
-              docker rm pelanggaran-run
-            fi            
-            if [ "$(docker ps -q -f name=pelanggaran-run-demo)" ]; then
-              docker stop pelanggaran-run-demo
-            fi
-            if [ "$(docker ps -aq -f name=pelanggaran-run-demo)" ]; then
-              docker rm pelanggaran-run-demo
-            fi            
-            docker run -d --name pelanggaran-run-demo --restart unless-stopped --network my-app -p 6000:3000 indrafajar/pelanggaran-be:latest
-            docker run -d --name pelanggaran-run --restart unless-stopped --network my-app -p 4000:3000 indrafajar/pelanggaran-be:latest
-            docker cp ~/pelanggaran-be/.env pelanggaran-run:/app/
-            docker cp ~/pelanggaran-be-demo/.env pelanggaran-run-demo:/app/
-            docker restart pelanggaran-run
-            docker restart pelanggaran-run-demo
-            docker image prune -f
+            if [ "$(podman ps -aq -f name=pelanggaran-run)" ]; then
+              podman container rm pelanggaran-run
+            fi        
+            podman run -d --name pelanggaran-run --restart unless-stopped --network my-app -p 4000:3000 docker.io/indrafajar/pelanggaran-be-saas:latest
+            podman cp ~/pelanggaran-be/.env pelanggaran-run:/app/
+            podman restart pelanggaran-run
+            podman image prune -f
           EOF
