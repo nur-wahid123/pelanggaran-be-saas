@@ -44,15 +44,15 @@ jobs:
           PORT: ${{ secrets.VM_PORT }}
         run: |
           ssh -o StrictHostKeyChecking=no -p "${PORT}" $USER@$HOST << 'EOF'
-            podman pull docker.io/indrafajar/pelanggaran-be-saas:latest
-            if [ "$(podman ps -q -f name=pelanggaran-run)" ]; then
-              podman stop pelanggaran-run
+            docker pull indrafajar/pelanggaran-be-saas:latest
+            if [ "$(docker ps -q -f name=pelanggaran-run)" ]; then
+              docker stop pelanggaran-run
             fi
-            if [ "$(podman ps -aq -f name=pelanggaran-run)" ]; then
-              podman container rm pelanggaran-run
+            if [ "$(docker ps -aq -f name=pelanggaran-run)" ]; then
+              docker container rm pelanggaran-run
             fi        
-            podman run -d --name pelanggaran-run --restart unless-stopped --network my-app -p 4000:3000 docker.io/indrafajar/pelanggaran-be-saas:latest
-            podman cp ~/pelanggaran-be/.env pelanggaran-run:/app/
-            podman restart pelanggaran-run
-            podman image prune -f
+            docker run -d --name pelanggaran-run --restart unless-stopped --network my-app -p 4000:3000 indrafajar/pelanggaran-be-saas:latest
+            docker cp ~/pelanggaran-be/.env pelanggaran-run:/app/
+            docker restart pelanggaran-run
+            docker image prune -f
           EOF
