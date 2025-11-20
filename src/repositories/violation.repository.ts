@@ -358,9 +358,13 @@ export class ViolationRepository extends Repository<ViolationEntity> {
       .leftJoin('st.studentClass', 'studentClass')
       .leftJoin('vi.violationTypes', 'violationTypes')
       .leftJoin('vi.school', 'school')
+      .leftJoin('vi.image', 'image')
       .select([
         'violationTypes.name',
         'violationTypes.point',
+        'vi.id',
+        'vi.date',
+        'image.id',
         'violationTypes.id',
       ])
       .addSelect([
