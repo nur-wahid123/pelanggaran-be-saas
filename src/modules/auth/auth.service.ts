@@ -205,7 +205,7 @@ export class AuthService {
 
     const token = await this.jwtService.signAsync(payload, {
       secret: process.env.USER_KEY_SECRET,
-      expiresIn: process.env.EXPIRY_TOKEN_TIME || '2h',
+      expiresIn: Number(process.env.EXPIRY_TOKEN_TIME) || '2h',
     });
 
     return { access_token: token, role: user.role };
