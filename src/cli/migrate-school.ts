@@ -69,7 +69,7 @@ async function run() {
         const school = queryRunner.manager.create(SchoolEntity, {
             name: schoolName,
             address: schoolAddress,
-            slug: `${schoolSlug}-oi`,
+            slug: `${schoolSlug}`,
             isActive: true,
             isDemo: false,
             violationLimit: 999999,
