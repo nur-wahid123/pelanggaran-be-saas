@@ -38,11 +38,12 @@ export class ViolationEntity extends CommonBaseEntity {
   @JoinTable()
   public students?: StudentEntity[];
 
-  @ManyToMany(() => ViolationTypeEntity, (vt) => vt.violations)
+  @ManyToMany(() => ViolationTypeEntity, (vt) => vt.violations, { onDelete: "CASCADE" })
   @JoinTable()
   @Expose({ name: 'violation_types' })
   public violationTypes?: ViolationTypeEntity[];
 
-  @ManyToOne(() => SchoolEntity)
+  @ManyToOne(() => SchoolEntity, { onDelete: 'CASCADE' })
   public school: SchoolEntity;
+
 }

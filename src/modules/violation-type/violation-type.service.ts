@@ -19,6 +19,7 @@ import { instanceToPlain } from 'class-transformer';
 import { RedisService } from '../redis/redis.service';
 import { LoggerService } from '../logger/logger.service';
 import { LogTypeEnum } from 'src/commons/enums/log-type.enum';
+import { VioltaionTypeDetailDto } from './dto/violation-type-detail.dto';
 
 @Injectable()
 export class ViolationTypeService {
@@ -78,7 +79,7 @@ export class ViolationTypeService {
     private readonly violationTypeRepository: ViolationTypeRepository,
     private readonly redis: RedisService,
     private readonly loggerService: LoggerService,
-  ) {}
+  ) { }
 
   private readonly cacheNameVersion = `violation-type:version`;
   private readonly cacheVersionNameViolation = 'violation:version';
@@ -95,7 +96,7 @@ export class ViolationTypeService {
       return JSON.parse(cache);
     } else {
       try {
-        const [data, itemCount] = await this.violationTypeRepository.findAll(
+        const { data, count: itemCount } = await this.violationTypeRepository.findAll(
           filter,
           pageOptionsDto,
           schoolId,
@@ -103,7 +104,17 @@ export class ViolationTypeService {
 
         const meta = new PageMetaDto({ pageOptionsDto, itemCount });
 
-        const pageDto = new PageDto(data, meta);
+        const vtData = data.map((v) => {
+          const vt = new VioltaionTypeDetailDto()
+          vt.id = v.v_id;
+          vt.point = v.v_point;
+          vt.name = v.v_name;
+          vt.totalViolated = Number(v.total_violated);
+          vt.totalStudent = Number(v.total_student);
+          return vt;
+        })
+
+        const pageDto = new PageDto(vtData, meta);
         const transformed = instanceToPlain(pageDto);
         this.redis.set(cacheKey, JSON.stringify(transformed));
         return transformed;
@@ -113,29 +124,17 @@ export class ViolationTypeService {
     }
   }
 
-  async findOne(id: number, schoolId: number): Promise<ViolationTypeEntity> {
+  async findOne(id: number, schoolId: number) {
     const cacheKey = `violation-type:findone:${JSON.stringify({ id, schoolId })}`;
     const cache = await this.redis.get(cacheKey);
     if (cache) {
       return JSON.parse(cache);
     } else {
       try {
-        const data = await this.violationTypeRepository.findOne({
-          where: { id, school: { id: schoolId } },
-          relations: { violations: { students: true } },
-          select: {
-            id: true,
-            name: true,
-            point: true,
-            violations: {
-              id: true,
-              students: true,
-            },
-          },
-        });
-        if (!data) throw new NotFoundException('data tidak ditemukan');
-        this.redis.set(cacheKey, JSON.stringify(data));
-        return data;
+        const data2 = await this.violationTypeRepository.findOneV(id, schoolId)
+        if (!data2) throw new NotFoundException('data tidak ditemukan');
+        this.redis.set(cacheKey, JSON.stringify(data2));
+        return data2;
       } catch (error) {
         throw error;
       }

@@ -18,6 +18,11 @@ export class CreateSchoolDto {
   public schoolName: string;
 
   @IsNotEmpty()
+  @IsString()
+  @Expose({ name: 'school_slug' })
+  public schoolSlug: string;
+
+  @IsNotEmpty()
   @IsBoolean()
   @Expose({ name: 'is_demo' })
   public isDemo: boolean;

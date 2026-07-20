@@ -3,6 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { VioltaionTypeDetailDto } from 'src/modules/violation-type/dto/violation-type-detail.dto';
 import { PageOptionsDto } from 'src/commons/dto/page-option.dto';
 import { QueryDateRangeDto } from 'src/commons/dto/query-daterange.dto';
 import { ViolationTypeEnum } from 'src/commons/enums/violation-type.enum';
@@ -14,6 +15,7 @@ import { ViolationTypeEntity } from 'src/entities/violation-type.entity';
 import { ViolationEntity } from 'src/entities/violation.entity';
 import { ImageService } from 'src/modules/image/image.service';
 import { QueryViolationDto } from 'src/modules/violation/dto/query-violation.dto';
+import { StudentViolationsDto } from 'src/modules/violation/dto/student-violations.dto';
 import { DataSource, Repository } from 'typeorm';
 
 @Injectable()
@@ -159,7 +161,7 @@ export class ViolationRepository extends Repository<ViolationEntity> {
       }
     } catch (e) {
       console.log(e);
-      throw new InternalServerErrorException('internal server error');
+      throw e;
     }
   }
 
@@ -206,7 +208,8 @@ export class ViolationRepository extends Repository<ViolationEntity> {
             finishDate: `${finishDate} 23:59:59`,
           });
         }
-      });
+      })
+      .orderBy('vi.id', 'DESC');
 
     const { page, skip, take } = pageOptionsDto;
     if (page && take) {
@@ -214,6 +217,7 @@ export class ViolationRepository extends Repository<ViolationEntity> {
     }
 
     const queryRes1 = await qB.getMany();
+    const queryRes1Count = await qB.getCount();
     const ids = queryRes1.map((vi) => {
       return vi.id;
     });
@@ -233,7 +237,7 @@ export class ViolationRepository extends Repository<ViolationEntity> {
       .where(ids.length ? 'vi.id IN (:...ids)' : '1=0', { ids });
 
     qB2.orderBy('vi.id', 'DESC');
-    return qB2.getManyAndCount();
+    return [await qB2.getMany(), queryRes1Count];
   }
 
   async findAllViolationType(
@@ -249,8 +253,9 @@ export class ViolationRepository extends Repository<ViolationEntity> {
       .leftJoin('violationTypes.violations', 'vi')
       .leftJoin('vi.creator', 'creator')
       .leftJoin('vi.students', 'student')
-      .select(['violationTypes.id'])
       .leftJoin('vi.school', 'school')
+      .select(['violationTypes.id'])
+      .addSelect('COUNT(COALESCE(vi.id, 0))', 'total_count')
       .where((qb) => {
         qb.andWhere('school.id = :schoolId', { schoolId }); // Filter by schoolId
         if (studentId) {
@@ -271,36 +276,50 @@ export class ViolationRepository extends Repository<ViolationEntity> {
             },
           );
         }
-        if (startDate && finishDate) {
-          qb.andWhere(`vi.date BETWEEN :startDate AND :finishDate`, {
-            startDate: `${startDate} 00:00:00`,
-            finishDate: `${finishDate} 23:59:59`,
-          });
-        }
-      });
+      })
+      .groupBy('violationTypes.id')
+      .orderBy('total_count', 'DESC');
 
-    const { page, skip, take, order } = pageOptionsDto;
+    const { page, skip, take } = pageOptionsDto;
     if (page && take) {
       qB.skip(skip).take(take);
     }
-    qB.orderBy('violationTypes.id', order);
     const qB1Res = await qB.getMany();
+    const qB1ResCount = await qB.getCount();
     const ids = qB1Res.map((vt) => vt.id);
     const qB2 = this.datasource
       .createQueryBuilder(ViolationTypeEntity, 'violationTypes')
       .leftJoin('violationTypes.violations', 'vi')
       .leftJoin('vi.students', 'student')
       .select([
-        'violationTypes.name',
-        'violationTypes.point',
-        'violationTypes.id',
+        'violationTypes.name violation_name',
+        'violationTypes.point violation_point',
+        'violationTypes.id violation_id',
+        'count(distinct vi.id) total_violated',
+        'count(distinct student.id) total_student',
       ])
       .leftJoin('vi.school', 'school')
-      .addSelect(['student.name', 'student.id'])
-      .addSelect(['vi.createdAt', 'vi.id'])
-      .where(ids.length ? 'violationTypes.id IN (:...ids)' : '1=0', { ids });
+      .where(ids.length ? 'violationTypes.id IN (:...ids)' : '1=0', { ids })
+      .groupBy('violationTypes.id')
+      .orderBy("total_violated", 'DESC');
+    const res = await qB2.getRawMany<{
+      violation_name: string;
+      violation_point: number;
+      violation_id: number;
+      total_violated: number;
+      total_student: number;
+    }>();
+    const violationTypes = res.map((r) => {
+      const vT = new VioltaionTypeDetailDto();
+      vT.id = r.violation_id;
+      vT.name = r.violation_name;
+      vT.point = r.violation_point;
+      vT.totalViolated = r.total_violated;
+      vT.totalStudent = r.total_student;
+      return vT;
+    })
 
-    return qB2.getManyAndCount();
+    return [violationTypes, qB1ResCount];
   }
 
   async findAllViolationStudent(
@@ -319,8 +338,9 @@ export class ViolationRepository extends Repository<ViolationEntity> {
       .leftJoin('vi.violationTypes', 'violationTypes')
       .leftJoin('vi.school', 'school')
       .select(['st.id'])
+      .addSelect('SUM(COALESCE(violationTypes.point, 0))', 'total_points')
       .where((qb) => {
-        qb.andWhere('school.id = :schoolId', { schoolId }); // Filter by schoolId
+        qb.andWhere('school.id = :schoolId', { schoolId });
         if (studentId) {
           qb.andWhere('st.id = :studentId', { studentId: Number(studentId) });
         }
@@ -337,48 +357,63 @@ export class ViolationRepository extends Repository<ViolationEntity> {
             },
           );
         }
-        if (startDate && finishDate) {
-          qb.andWhere(`vi.date BETWEEN :startDate AND :finishDate`, {
-            startDate: `${startDate} 00:00:00`,
-            finishDate: `${finishDate} 23:59:59`,
-          });
-        }
-      });
+      })
+      .groupBy('st.id')
+      .orderBy('total_points', 'DESC')
+    // .addOrderBy('st.id', 'DESC');
 
     const { page, skip, take } = pageOptionsDto;
     if (page && take) {
       qB.skip(skip).take(take);
     }
-    qB.orderBy('st.id', 'DESC');
-    const qB1Res = await qB.getMany();
+
+    const qB1Res = await qB.getMany().catch((error) => {
+      console.log(error);
+      throw error
+    });
+    const qB1ResCount = await qB.getCount();
     const ids = qB1Res.map((st) => st.id);
     const qB2 = this.datasource
       .createQueryBuilder(StudentEntity, 'st')
       .leftJoin('st.violations', 'vi')
       .leftJoin('st.studentClass', 'studentClass')
       .leftJoin('vi.violationTypes', 'violationTypes')
-      .leftJoin('vi.school', 'school')
-      .leftJoin('vi.image', 'image')
+      // Note: Removed vi.image join if it's breaking the per-student group total
       .select([
-        'violationTypes.name',
-        'violationTypes.point',
-        'vi.id',
-        'vi.date',
-        'image.id',
-        'violationTypes.id',
-      ])
-      .addSelect([
+        'st.id',
         'st.name',
         'st.nationalStudentId',
         'st.schoolStudentId',
-        'st.id',
+        'studentClass.id',
+        'studentClass.name',
       ])
-      .addSelect(['vi.createdAt', 'vi.id'])
-      .addSelect(['studentClass.name', 'studentClass.id'])
-      .where(ids.length ? 'st.id IN (:...ids)' : '1=0', { ids });
+      // Typecast or parse strings to numbers if your DB driver returns them as strings
+      .addSelect('CAST(SUM(COALESCE(violationTypes.point, 0)) AS INTEGER)', 'total_points')
+      .addSelect('CAST(COUNT(DISTINCT vi.id) AS INTEGER)', 'violation_count')
+      .where(ids.length ? 'st.id IN (:...ids)' : '1=0', { ids })
+      // Group strictly by the student identity and their direct relation strings
+      .groupBy('st.id')
+      .addGroupBy('studentClass.id')
+      // Order by the literal aggregate formula rather than the alias name to ensure SQL safety
+      .orderBy('SUM(COALESCE(violationTypes.point, 0))', 'DESC')
 
-    return qB2.getManyAndCount();
+
+    const students = await qB2.getRawMany();
+    const dto: StudentViolationsDto[] = students.map((student) => {
+      const stdvdt = new StudentViolationsDto()
+      stdvdt.totalPoints = +student.total_points;
+      stdvdt.violationCount = +student.violation_count;
+      stdvdt.id = student.st_id;
+      stdvdt.name = student.st_name;
+      stdvdt.nationalStudentId = student.st_national_student_id;
+      stdvdt.schoolStudentId = student.st_school_student_id;
+      stdvdt.studentClass = { id: student.studentClass_id, name: student.studentClass_name } as any;
+      return stdvdt;
+    });
+
+    return [dto, qB1ResCount];
   }
+
 
   async saveViolations(violations: ViolationEntity) {
     const queryRunner = this.datasource.createQueryRunner();

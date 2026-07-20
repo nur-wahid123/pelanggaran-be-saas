@@ -23,6 +23,7 @@ export class ImageEntity extends CommonBaseEntity {
 
   @ManyToOne(() => ImageLinks, (imageLinks) => imageLinks.images, {
     nullable: false,
+    onDelete: 'CASCADE',
   })
   @Expose({ name: 'image_link' })
   public imageLink?: ImageLinks;

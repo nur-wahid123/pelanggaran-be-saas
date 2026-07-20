@@ -16,6 +16,40 @@ import { SchoolEntity } from '../entities/school.entity';
 
 @Injectable()
 export class StudentRepository extends Repository<StudentEntity> {
+  async findOneS(id: string, schoolId: number) {
+    const res = await this.datasource.createQueryBuilder(StudentEntity, 's')
+      .select([
+        's.id',
+        's.name',
+        'studentClass.id',
+        'studentClass.name',
+        's.nationalStudentId',
+        's.schoolStudentId',
+        'count (distinct violations.id) as totalViolations',
+        'sum (violationTypes.point) as totalPoints'
+      ])
+      .leftJoin('s.studentClass', 'studentClass')
+      .leftJoin('s.violations', 'violations')
+      .leftJoin('violations.violationTypes', 'violationTypes')
+      .where('s.nationalStudentId = :id', { id })
+      .andWhere('s.school.id = :schoolId', { schoolId })
+      .groupBy('s.id')
+      .addGroupBy('studentClass.id')
+      .addGroupBy('studentClass.name')
+      .getRawOne();
+    const std: StudentResponse = new StudentResponse()
+    std.id = res.s_id
+    std.name = res.s_name
+    std.nationalStudentId = res.s_national_student_id
+    std.schoolStudentId = res.s_school_student_id
+    std.studentClass = new ClassEntity()
+    std.studentClass.id = res.studentClass_id
+    std.studentClass.name = res.studentClass_name
+    std.totalViolations = res.totalviolations
+    std.totalPoints = res.totalpoints
+    return std
+  }
+
   findAllStudentSearch(
     query: FilterDto,
     pageOptionsDto: PageOptionsDto,
@@ -24,7 +58,8 @@ export class StudentRepository extends Repository<StudentEntity> {
     const { page, take, skip } = pageOptionsDto;
 
     const Qb = this.createQueryBuilder('student')
-      .select(['student.id', 'student.name'])
+      .select(['student.id', 'student.name', 'student.schoolStudentId', 'student.nationalStudentId', 'studentClass.id', 'studentClass.name'])
+      .leftJoin('student.studentClass', 'studentClass')
       .where((qb) => {
         if (search) {
           qb.andWhere('LOWER(student.name) LIKE LOWER(:search)', {
@@ -127,8 +162,8 @@ export class StudentRepository extends Repository<StudentEntity> {
         'student.schoolStudentId',
         'studentClass.id',
         'studentClass.name',
-        'violations.id',
       ])
+      .addSelect('count(violations.id)', 'totalViolations')
       .addSelect((subQuery) => {
         return subQuery
           .select('COALESCE(SUM(violation_type.point), 0)', 'totalPoints')
@@ -177,25 +212,9 @@ export class StudentRepository extends Repository<StudentEntity> {
         student.name = row['student_name'];
         student.schoolStudentId = row['student_school_student_id'];
         student.nationalStudentId = row['student_national_student_id'];
-        const studentClass = new ClassEntity();
-        studentClass.id = row['studentClass_id'];
-        studentClass.name = row['studentClass_name'];
-        student.studentClass = studentClass;
         student.totalPoints = row['student_totalPoints'];
-        student.violations = [];
+        student.totalViolations = row['totalViolations'];
         studentMap.set(studentId, student);
-      }
-      if (row['violations_id']) {
-        const student = studentMap.get(studentId);
-        if (
-          !student.violations.some((v: any) => v.id === row['violations_id'])
-        ) {
-          const violations = student.violations;
-          const violation = new ViolationEntity();
-          violation.id = row['violations_id'];
-          violations.push(violation);
-          student.violations = violations;
-        }
       }
     }
 

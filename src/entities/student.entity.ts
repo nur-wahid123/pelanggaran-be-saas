@@ -34,6 +34,7 @@ export class StudentEntity extends CommonBaseEntity {
   @Expose({ name: 'student_class' })
   public studentClass?: ClassEntity;
 
-  @ManyToOne(() => SchoolEntity)
+  @ManyToOne(() => SchoolEntity, { onDelete: 'CASCADE' })
   public school: SchoolEntity;
+
 }

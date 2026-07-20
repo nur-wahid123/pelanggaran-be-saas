@@ -8,25 +8,24 @@ import { PageOptionsDto } from 'src/commons/dto/page-option.dto';
 import { LogTypeEnum } from 'src/commons/enums/log-type.enum';
 import { ClassEntity } from 'src/entities/class.entity';
 import { SchoolEntity } from 'src/entities/school.entity';
+import { ClassEntityViewDto } from 'src/modules/classes/dto/class-view.dto';
 import { LoggerService } from 'src/modules/logger/logger.service';
 import { DataSource, Repository } from 'typeorm';
 
 @Injectable()
 export class ClassRepository extends Repository<ClassEntity> {
-  findAll(schoolId: number, filter: FilterDto, pageOptionsDto: PageOptionsDto) {
+  async findAll(schoolId: number, filter: FilterDto, pageOptionsDto: PageOptionsDto) {
     const { page, skip, take, order } = pageOptionsDto;
     const qB = this.datasource
       .createQueryBuilder(ClassEntity, 'class')
       .leftJoin('class.students', 'students')
       .leftJoin('class.school', 'school')
       .select([
-        'class.id',
-        'class.name',
-        'students.id',
-        'students.schoolStudentId',
-        'students.nationalStudentId',
-        'students.name',
+        'class.id c_id',
+        'class.name c_name',
+        'count(students.id) as total_student'
       ])
+      .groupBy('class.id')
       .where((qb) => {
         const { search } = filter;
         qb.andWhere('school.id = :schoolId', {
@@ -40,10 +39,19 @@ export class ClassRepository extends Repository<ClassEntity> {
       });
 
     if (page && take) {
-      qB.skip(skip).take(take);
+      qB.offset(skip).limit(take);
     }
     qB.orderBy('class.id', order);
-    return qB.getManyAndCount();
+    const res = await qB.getRawMany()
+    const count = await qB.getCount()
+    const clsSt = res.map((cls) => {
+      const c = new ClassEntityViewDto()
+      c.id = cls.c_id
+      c.name = cls.c_name
+      c.totalStudent = cls.total_student
+      return c
+    })
+    return { data: clsSt, count }
   }
 
   async saveClass(newClass: ClassEntity, type: 'update' | 'delete') {

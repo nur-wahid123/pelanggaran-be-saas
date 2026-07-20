@@ -13,17 +13,19 @@ import { LoggerEntity } from 'src/entities/logger.entity';
 import { SchoolEntity } from 'src/entities/school.entity';
 import { UserEntity } from 'src/entities/user.entity';
 import { UserLoginDto } from 'src/modules/auth/dto/login-user.dto';
+import { RoleEnum } from 'src/commons/enums/role.enum';
 import { DataSource, Repository } from 'typeorm';
+import { UserViewDto } from 'src/modules/user/dto/user-view.dto';
 
 @Injectable()
 export class UserRepository extends Repository<UserEntity> {
-  findAll(pageOptionsDto: PageOptionsDto, filter: FilterDto, schoolId: number) {
+  async findAll(pageOptionsDto: PageOptionsDto, filter: FilterDto, schoolId: number) {
     const { page, skip, take, order } = pageOptionsDto;
     const qB = this.createQueryBuilder('user')
       .leftJoin('user.violations', 'violations')
       .leftJoin('user.school', 'school')
-      .select(['user.id', 'user.name', 'user.role'])
-      .addSelect(['violations.id'])
+      .select(['user.id u_id', 'user.name u_name', 'user.role u_role'])
+      .addSelect(['count(violations.id) total_violation'])
       .where((qb) => {
         const { search } = filter;
         qb.andWhere('school.id = :schoolId', { schoolId });
@@ -36,11 +38,22 @@ export class UserRepository extends Repository<UserEntity> {
           );
         }
       })
-      .orderBy('user.id', order);
+      .groupBy('user.id')
+      .orderBy('total_violation', Order.DESC);
     if (page && take) {
-      qB.skip(skip).take(take);
+      qB.offset(skip).limit(take);
     }
-    return qB.getManyAndCount();
+    const res = await qB.getRawMany<{ u_id: number, u_name: string, u_role: RoleEnum, total_violation: number }>()
+    const count = await qB.getCount()
+    const usr = res.map((us) => {
+      const nw = new UserViewDto()
+      nw.id = us.u_id
+      nw.name = us.u_name
+      nw.role = us.u_role
+      nw.totalViolation = us.total_violation
+      return nw
+    })
+    return { res: usr, count };
   }
 
   getLogs(userId: number, pageOptionsDto: PageOptionsDto) {
@@ -148,9 +161,13 @@ export class UserRepository extends Repository<UserEntity> {
     super(UserEntity, datasource.createEntityManager());
   }
 
-  findUserByUsername(username: string) {
-    const user = this.findOne({
-      where: { username },
+  async findUserByUsername(username: string, slug?: string) {
+    const whereCondition = slug
+      ? { username, school: { slug } }
+      : { username, role: RoleEnum.SUPERADMIN };
+
+    const user = await this.findOne({
+      where: whereCondition,
       relations: { school: true },
       select: {
         id: true,
@@ -165,6 +182,7 @@ export class UserRepository extends Repository<UserEntity> {
           startDate: true,
           isActive: true,
           image: true,
+          slug: true,
         },
       },
     });
@@ -184,6 +202,7 @@ export class UserRepository extends Repository<UserEntity> {
   ): Promise<UserEntity> {
     const user: UserEntity = await this.findUserByUsername(
       userLoginDto.username,
+      userLoginDto.slug
     );
 
     if (isImpersonate == true) {

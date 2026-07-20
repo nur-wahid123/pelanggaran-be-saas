@@ -22,6 +22,7 @@ export class LoggerEntity extends CommonBaseEntity {
   @Column({ type: 'varchar', length: 64 })
   logType: LogTypeEnum | string;
 
-  @ManyToOne(() => UserEntity, (user) => user.logs, { nullable: true })
+  @ManyToOne(() => UserEntity, (user) => user.logs, { nullable: true, onDelete: 'CASCADE' })
   public user: UserEntity;
+
 }

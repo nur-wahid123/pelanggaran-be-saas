@@ -1,6 +1,6 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { TransformInterceptor } from './commons/interceptors/transform.interceptor';
 import { HttpExceptionFilter } from './commons/filters/http-exception.filter';
 import * as cookieParser from 'cookie-parser';
@@ -22,6 +22,9 @@ async function bootstrap() {
     new TransformInterceptor(),
     new ResponseInterceptor(),
   );
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector), {
+    strategy: 'exposeAll', // Or control it strictly via decorators
+  }));
   app.useGlobalFilters(new HttpExceptionFilter());
   app.use(json({ limit: '50mb' }));
   app.use(urlencoded({ extended: true, limit: '50mb' }));

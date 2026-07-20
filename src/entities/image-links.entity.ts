@@ -22,7 +22,9 @@ export class ImageLinks extends CommonBaseEntity {
 
   @OneToOne(() => ViolationEntity, (violation) => violation.image, {
     nullable: true,
+    onDelete: 'CASCADE'
   })
   @JoinColumn({ name: 'violation_id' })
   violation: ViolationEntity | null;
+
 }

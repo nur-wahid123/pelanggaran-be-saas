@@ -22,7 +22,8 @@
     "migration:create": "yarn typeorm-ts-node-commonjs migration:create",
     "migration:generate": "yarn typeorm-ts-node-commonjs -d ./src/commons/configs/migration.config.ts migration:generate ",
     "migration:run": "yarn typeorm-ts-node-commonjs migration:run -d ./src/commons/configs/migration.config.ts",
-    "migration:revert": "yarn typeorm-ts-node-commonjs migration:revert -d ./src/commons/configs/migration.config.ts"
+    "migration:revert": "yarn typeorm-ts-node-commonjs migration:revert -d ./src/commons/configs/migration.config.ts",
+    "migrate:school": "npx ts-node -r tsconfig-paths/register src/cli/migrate-school.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.864.0",
@@ -41,6 +42,7 @@
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.2.3",
     "ioredis": "^5.8.1",
+    "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "passport-jwt": "^4.0.1",
     "pg": "^8.16.3",

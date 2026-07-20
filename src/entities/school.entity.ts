@@ -54,6 +54,10 @@ export class SchoolEntity extends CommonBaseEntity {
   @Expose({ name: 'start_date' })
   public startDate: string;
 
+  @Column({ type: 'varchar', length: 100, unique: true, nullable: true })
+  @Expose({ name: 'slug' })
+  public slug?: string;
+
   //limitations
 
   @Column({ type: 'int', nullable: true })

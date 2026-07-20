@@ -22,10 +22,11 @@ export class AuthService {
     try {
       const user = await this.userRepository.findOne({
         where: { id: +id },
-        select: { id: true, username: true },
+        relations: { school: true },
+        select: { id: true, username: true, school: { id: true, slug: true } },
       });
       const payload = await this.userRepository.validateUser(
-        { username: user.username, password: '' },
+        { username: user.username, password: '', slug: user.school?.slug || '' },
         true,
       );
 
@@ -36,6 +37,7 @@ export class AuthService {
       throw error;
     }
   }
+
   async editProfile(body: EditProfileDto, userId: number) {
     // Check if username or email already exists (excluding current user)
     if (body.username) {
@@ -83,7 +85,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly userRepository: UserRepository,
     private readonly loggerService: LoggerService,
-  ) {}
+  ) { }
 
   async editPassword(body: ResetPasswordDto, userId: number, schoolId: number) {
     const user = await this.userRepository.findOne({
@@ -160,9 +162,9 @@ export class AuthService {
   }
 
   async login(dto: UserLoginDto): Promise<Token> {
-    const { username } = dto;
+    const { username, slug } = dto;
     try {
-      const user = await this.userRepository.findUserByUsername(username);
+      const user = await this.userRepository.findUserByUsername(username, slug);
       if (user.role !== RoleEnum.SUPERADMIN && !user.school.isActive) {
         throw new BadRequestException(
           'Sekolah Tidak Aktif Silahkan hubungi Admin 087743886185',
@@ -207,7 +209,11 @@ export class AuthService {
       secret: process.env.USER_KEY_SECRET,
       expiresIn: Number(process.env.EXPIRY_TOKEN_TIME) || '2h',
     });
-
-    return { access_token: token, role: user.role };
+    try {
+      return { access_token: token, role: user.role, slug: user.school.slug ?? "" };
+    } catch (error) {
+      console.log(error);
+      return { access_token: token, role: user.role, slug: "" };
+    }
   }
 }

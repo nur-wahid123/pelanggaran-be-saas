@@ -5,7 +5,7 @@ import {
   NestInterceptor,
   StreamableFile,
 } from '@nestjs/common';
-import { classToPlain } from 'class-transformer';
+import { classToPlain, instanceToPlain } from 'class-transformer';
 import { map } from 'rxjs/operators';
 import { Observable } from 'rxjs';
 
@@ -14,7 +14,7 @@ export class TransformInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
       map(
-        (data) => (data instanceof StreamableFile ? data : classToPlain(data)),
+        (data) => (data instanceof StreamableFile ? data : instanceToPlain(data)),
         // classToPlain(data),
       ),
     );

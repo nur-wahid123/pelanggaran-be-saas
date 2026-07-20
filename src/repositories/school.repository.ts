@@ -307,35 +307,33 @@ export class SchoolRepository extends Repository<SchoolEntity> {
       await qR.connect();
       await qR.startTransaction();
 
+      // Cek ketersediaan sekolah
       const school = await qR.manager.findOne(SchoolEntity, {
-        where: { id, deletedAt: null },
+        where: { id },
       });
       if (!school) {
         throw new NotFoundException('School not found');
       }
-      school.deletedAt = new Date();
-      school.deletedBy = userId;
-      await qR.manager.save(school);
 
-      // Soft delete all users of this school
-      const users = await qR.manager.find(UserEntity, {
-        where: { school: { id }, deletedAt: null },
-      });
-      for (const user of users) {
-        user.deletedAt = new Date();
-        user.deletedBy = userId;
-        await qR.manager.save(user);
-      }
+      // SATU perintah untuk menghapus sekolah secara fisik.
+      // PostgreSQL akan menghapus seluruh data terkait (cascading) secara otomatis di database.
+      await qR.manager
+        .createQueryBuilder()
+        .delete()
+        .from(SchoolEntity)
+        .where('id = :id', { id })
+        .execute();
 
       await qR.commitTransaction();
       return { deleted: true };
     } catch (error) {
       await qR.rollbackTransaction();
-      console.log(error);
+      console.error(error);
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException('Internal Server Error');
     } finally {
       await qR.release();
     }
   }
+
 }

@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateSchoolDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
 import { JwtPayload } from '../auth/jwt-payload.interface';
@@ -21,7 +21,7 @@ export class SchoolService {
     private readonly schoolRepository: SchoolRepository,
     private readonly userRepository: UserRepository,
     private readonly redis: RedisService,
-  ) {}
+  ) { }
   private readonly versionKey = 'school:version';
 
   async create(createSchoolDto: CreateSchoolDto, payload: JwtPayload) {
@@ -36,6 +36,7 @@ export class SchoolService {
       isDemo,
       phone,
       schoolName,
+      schoolSlug,
       startDate,
       studentLimit,
       userEmail,
@@ -50,6 +51,7 @@ export class SchoolService {
     // Create and populate the SchoolEntity
     const school = new SchoolEntity();
     school.name = schoolName;
+    school.slug = schoolSlug;
     school.isDemo = isDemo;
     school.isActive = isActive;
     school.address = address;
@@ -136,48 +138,76 @@ export class SchoolService {
     }
   }
 
-  async findOneSuper(id: number) {
-    const cacheKey = `school:findoneSuper:${id}`;
-    const cache = await this.redis.get(cacheKey);
-    if (cache) {
-      return cache;
-    } else {
-    }
+  async findOneBySlug(slug: string) {
     const data = await this.schoolRepository.findOne({
-      where: { id },
-      relations: {
-        users: true,
-        classes: true,
-        students: true,
-        violationTypes: true,
-        violations: true,
-      },
+      where: { slug },
       select: {
         id: true,
         name: true,
         address: true,
-        phone: true,
-        description: true,
-        email: true,
+        slug: true,
         image: true,
-        startDate: true,
-        studentsLimit: true,
-        violationTypeLimit: true,
-        violationLimit: true,
-        classesLimit: true,
-        userLimit: true,
         isDemo: true,
         isActive: true,
-        users: { id: true, name: true, email: true, role: true },
-        classes: { id: true },
-        students: { id: true },
-        violationTypes: { id: true },
-        violations: { id: true },
-      },
+      }
     });
-    const transformed = instanceToPlain(data);
-    this.redis.set(cacheKey, transformed);
-    return transformed;
+    if (!data) throw new NotFoundException('Sekolah tidak ditemukan');
+    return instanceToPlain(data);
+  }
+
+  async findOneSuper(id: number) {
+    try {
+      const cacheKey = `school:findoneSuper:${id}`;
+      const cache = await this.redis.get(cacheKey);
+      if (cache) {
+        return cache;
+      }
+      const data = await this.schoolRepository.createQueryBuilder('school')
+        .leftJoin('school.users', 'user')
+        .select([
+          'school.id',
+          'school.name',
+          'school.address',
+          'school.image',
+          'school.email',
+          'school.phone',
+          'school.description',
+          'school.startDate',
+          'school.studentsLimit',
+          'school.violationTypeLimit',
+          'school.violationLimit',
+          'school.classesLimit',
+          'school.isDemo',
+          'school.isActive',
+          'school.userLimit',
+          'user.id',
+          'user.name',
+          'user.isActive',
+          'user.email',
+          'user.role'
+        ])
+        .loadRelationCountAndMap('school.class_count', 'school.classes')
+        .loadRelationCountAndMap('school.students_count', 'school.students')
+        .loadRelationCountAndMap('school.violation_types_count', 'school.violationTypes')
+        .loadRelationCountAndMap('school.violations_count', 'school.violations')
+        .where('school.id = :id', { id })
+        .getOne();
+
+      if (!data) {
+        throw new NotFoundException('School not found');
+      }
+
+      const transformed = instanceToPlain(data);
+      transformed.students = Array.from({ length: (data as any).studentsCount || 0 }, () => ({ id: 0 }));
+      transformed.violation_types = Array.from({ length: (data as any).violationTypesCount || 0 }, () => ({ id: 0 }));
+      transformed.violations = Array.from({ length: (data as any).violationsCount || 0 }, () => ({ id: 0 }));
+
+      this.redis.set(cacheKey, transformed);
+      return transformed;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
 
   async update(id: number, updateSchoolDto: UpdateSchoolDto, userId: number) {

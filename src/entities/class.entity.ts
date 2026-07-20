@@ -20,6 +20,7 @@ export class ClassEntity extends CommonBaseEntity {
   @OneToMany(() => StudentEntity, (student) => student.studentClass)
   public students?: StudentEntity[];
 
-  @ManyToOne(() => SchoolEntity)
+  @ManyToOne(() => SchoolEntity, (school) => school.classes, { onDelete: 'CASCADE' })
   public school: SchoolEntity;
+
 }

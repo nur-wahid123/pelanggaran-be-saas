@@ -22,12 +22,12 @@ import { SchoolFilterDto } from './dto/school-filter.dto';
 import { AdminUpdateSchoolDto } from './dto/admin-update-school.dto';
 import { PermissionGuard } from 'src/commons/guards/permission.guard';
 
-@UseGuards(PermissionGuard)
 @Controller('school')
 export class SchoolController {
-  constructor(private readonly schoolService: SchoolService) {}
+  constructor(private readonly schoolService: SchoolService) { }
 
   @Post('create')
+  @UseGuards(PermissionGuard)
   @SetRole(RoleEnum.SUPERADMIN)
   create(
     @Body() createSchoolDto: CreateSchoolDto,
@@ -56,6 +56,7 @@ export class SchoolController {
   //   }
   // }
 
+  @UseGuards(PermissionGuard)
   @Get('list')
   @SetRole(RoleEnum.SUPERADMIN)
   findAll(
@@ -67,17 +68,25 @@ export class SchoolController {
   }
 
   @Get('detail-admin/:id')
+  @UseGuards(PermissionGuard)
   @SetRole(RoleEnum.ADMIN)
   findOne(@Param('id') id: string, @Payload() payload: JwtPayload) {
     return this.schoolService.findOne(+id, Number(payload.school_id));
   }
 
   @Get('detail/:id')
+  @UseGuards(PermissionGuard)
   findOneSuper(@Param('id') id: string) {
     return this.schoolService.findOneSuper(+id);
   }
 
+  @Get('by-slug/:slug')
+  findOneBySlug(@Param('slug') slug: string) {
+    return this.schoolService.findOneBySlug(slug);
+  }
+
   @Patch('update/:id')
+  @UseGuards(PermissionGuard)
   @SetRole(RoleEnum.SUPERADMIN)
   update(
     @Param('id') id: string,
@@ -88,6 +97,7 @@ export class SchoolController {
   }
 
   @Patch('admin/update/:id')
+  @UseGuards(PermissionGuard)
   @SetRole(RoleEnum.SUPERADMIN, RoleEnum.ADMIN)
   updateAdmin(
     @Param('id') id: string,
@@ -102,6 +112,7 @@ export class SchoolController {
   }
 
   @Delete('remove/:id')
+  @UseGuards(PermissionGuard)
   @SetRole(RoleEnum.SUPERADMIN)
   remove(@Param('id') id: string, @Payload() payload: JwtPayload) {
     return this.schoolService.remove(+id, Number(payload.sub));

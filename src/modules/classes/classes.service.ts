@@ -44,7 +44,7 @@ export class ClassesService {
       return cache;
     } else {
       try {
-        const [data, itemCount] = await this.classRepository.findAll(
+        const { data, count: itemCount } = await this.classRepository.findAll(
           school_id,
           query,
           pageOptionsDto,
@@ -88,7 +88,7 @@ export class ClassesService {
   constructor(
     private readonly classRepository: ClassRepository,
     private readonly redis: RedisService,
-  ) {}
+  ) { }
 
   async findOne(id: number, school_id: number) {
     const cacheKey = `class:findone:${JSON.stringify({ id, school_id })}`;
@@ -105,6 +105,7 @@ export class ClassesService {
             name: true,
             students: {
               id: true,
+              name: true,
             },
           },
         });

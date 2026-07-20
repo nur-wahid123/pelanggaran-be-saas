@@ -4,6 +4,7 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  Unique, // Tambahkan import Unique
 } from 'typeorm';
 import { CommonBaseEntity } from './common-base.entity';
 import { RoleEnum } from './../commons/enums/role.enum';
@@ -13,6 +14,7 @@ import { Exclude, Expose } from 'class-transformer';
 import { LoggerEntity } from './logger.entity';
 
 @Entity('users')
+@Unique(['username', 'school']) // Indeks unik gabungan username + schoolId
 export class UserEntity extends CommonBaseEntity {
   @PrimaryGeneratedColumn()
   public id?: number;
@@ -24,14 +26,14 @@ export class UserEntity extends CommonBaseEntity {
   @Column()
   public name?: string;
 
-  @Column({ unique: true, nullable: false })
+  @Column({ nullable: false }) // Hapus unique: true dari sini
   public username?: string;
 
   @Column({ nullable: false })
   @Exclude()
   public password?: string;
 
-  @Column({ nullable: false, unique: true })
+  @Column({ nullable: false })
   public email?: string;
 
   @Column({ type: 'enum', enum: RoleEnum })
@@ -40,7 +42,7 @@ export class UserEntity extends CommonBaseEntity {
   @OneToMany(() => ViolationEntity, (violation) => violation.creator)
   public violations?: ViolationEntity[];
 
-  @ManyToOne(() => SchoolEntity, { nullable: true })
+  @ManyToOne(() => SchoolEntity, { onDelete: 'CASCADE' })
   public school: SchoolEntity;
 
   @OneToMany(() => LoggerEntity, (logger) => logger.user)

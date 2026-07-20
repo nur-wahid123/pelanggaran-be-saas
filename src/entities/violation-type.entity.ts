@@ -20,9 +20,10 @@ export class ViolationTypeEntity extends CommonBaseEntity {
   @Column()
   public point?: number;
 
-  @ManyToMany(() => ViolationEntity, (v) => v.violationTypes)
+  @ManyToMany(() => ViolationEntity, (v) => v.violationTypes, { onDelete: "CASCADE" })
   public violations?: ViolationEntity[];
 
-  @ManyToOne(() => SchoolEntity)
+  @ManyToOne(() => SchoolEntity, { onDelete: 'CASCADE' })
   public school: SchoolEntity;
+
 }

@@ -89,7 +89,7 @@ export class StudentService {
     private readonly studentRepository: StudentRepository,
     private readonly redis: RedisService,
     private readonly loggerService: LoggerService,
-  ) {}
+  ) { }
 
   async create(
     userId: number,
@@ -136,34 +136,11 @@ export class StudentService {
       return cache;
     } else {
       try {
-        const data = await this.studentRepository.findOne({
-          where: { nationalStudentId: id, school: { id: schoolId } },
-          relations: {
-            studentClass: true,
-            violations: { violationTypes: true },
-          },
-          select: {
-            id: true,
-            name: true,
-            studentClass: {
-              id: true,
-              name: true,
-            },
-            nationalStudentId: true,
-            schoolStudentId: true,
-            violations: {
-              id: true,
-              violationTypes: {
-                id: true,
-                point: true,
-              },
-            },
-          },
-        });
-        if (!data) {
+        const data2 = await this.studentRepository.findOneS(id, schoolId)
+        if (!data2) {
           throw new NotFoundException('student not found');
         }
-        const transformed = instanceToPlain(data);
+        const transformed = instanceToPlain(data2);
         this.redis.set(cacheKey, transformed);
         return transformed;
       } catch (error) {

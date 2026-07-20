@@ -182,7 +182,7 @@ export class UserService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly redis: RedisService,
-  ) {}
+  ) { }
 
   private readonly cacheVersionName = 'user:version';
   private readonly cacheVersionNameViolation = 'violation:version';
@@ -199,12 +199,12 @@ export class UserService {
       return cache;
     } else {
       try {
-        const [data, itemCount] = await this.userRepository.findAll(
+        const { count, res: data } = await this.userRepository.findAll(
           pageOptionsDto,
           filter,
           schoolId,
         );
-        const meta = new PageMetaDto({ pageOptionsDto, itemCount });
+        const meta = new PageMetaDto({ pageOptionsDto, itemCount: count });
 
         const pageDto = new PageDto(data, meta);
         const transformed = instanceToPlain(pageDto);
