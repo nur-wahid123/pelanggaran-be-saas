@@ -10,7 +10,7 @@ import { ViolationTypeEntity } from 'src/entities/violation-type.entity';
 import { CreateViolationTypeBatchDto } from 'src/modules/violation-type/dto/create-violation-type.dto';
 import { QueryViolationTypeDto } from 'src/modules/violation-type/dto/query-violation-type.dto';
 import { VioltaionTypeDetailDto } from 'src/modules/violation-type/dto/violation-type-detail.dto';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, In, IsNull, Repository } from 'typeorm';
 
 @Injectable()
 export class ViolationTypeRepository extends Repository<ViolationTypeEntity> {
@@ -171,7 +171,7 @@ export class ViolationTypeRepository extends Repository<ViolationTypeEntity> {
       const isDemo = school.isDemo;
       if (isDemo) {
         const violationTypeLength =
-          await queryRunner.manager.count(ViolationTypeEntity);
+          await queryRunner.manager.count(ViolationTypeEntity, { where: { school: { id: schoolId }, deletedAt: IsNull() } });
         if (violationTypeLength >= school.violationTypeLimit) {
           throw new BadRequestException(
             'Jumlah Jenis Pelanggaran Melebihi Batas Aplikasi Demo',
