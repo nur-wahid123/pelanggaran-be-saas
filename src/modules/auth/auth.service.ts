@@ -87,11 +87,19 @@ export class AuthService {
     private readonly loggerService: LoggerService,
   ) { }
 
-  async editPassword(body: ResetPasswordDto, userId: number, schoolId: number) {
-    const user = await this.userRepository.findOne({
-      where: { id: userId, school: { id: schoolId } },
-      select: { id: true, password: true },
-    });
+  async editPassword(body: ResetPasswordDto, userId: number, schoolId: number, role: RoleEnum) {
+    let user = null;
+    if (role === RoleEnum.SUPERADMIN) {
+      user = await this.userRepository.findOne({
+        where: { id: userId },
+        select: { id: true, password: true },
+      });
+    } else {
+      user = await this.userRepository.findOne({
+        where: { id: userId, school: { id: schoolId } },
+        select: { id: true, password: true },
+      });
+    }
     if (user) {
       const isMatch = await this.userRepository.isPasswordMatch(
         body.oldPassword,
@@ -115,7 +123,7 @@ export class AuthService {
   }
 
   getUser(payload: JwtPayload) {
-    if (payload.sub) {
+    if (payload.role === RoleEnum.ADMIN || payload.role === RoleEnum.USER) {
       return this.userRepository.findOne({
         where: { id: payload.sub, school: { id: Number(payload.school_id) } },
         relations: { violations: true },
@@ -130,7 +138,21 @@ export class AuthService {
         },
       });
     }
-    throw new InternalServerErrorException('Internal server error.');
+    if (payload.role === RoleEnum.SUPERADMIN) {
+      return this.userRepository.findOne({
+        where: { id: payload.sub },
+        relations: { violations: true },
+        select: {
+          password: false,
+          violations: { id: true },
+          email: true,
+          id: true,
+          role: true,
+          username: true,
+          name: true,
+        },
+      });
+    }
   }
 
   async init() {

@@ -25,7 +25,7 @@ import { RoleEnum } from 'src/commons/enums/role.enum';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -49,6 +49,7 @@ export class AuthController {
       body,
       +payload.sub,
       Number(payload.school_id),
+      payload.role
     );
   }
 
