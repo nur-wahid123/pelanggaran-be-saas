@@ -72,24 +72,43 @@ export class ViolationTypeRepository extends Repository<ViolationTypeEntity> {
         select: { id: true, isDemo: true, violationTypeLimit: true },
       });
       const isDemo = school.isDemo;
-      const violationTypeLength = await queryRunner.manager.count(
+      const violationTypeLimit = school.violationTypeLimit;
+      // Current count of violation types for the school
+      const currentViolationTypeLength = await queryRunner.manager.count(
         ViolationTypeEntity,
         { where: { school: { id: school.id } } },
       );
-      if (isDemo && violationTypeLength >= school.violationTypeLimit) {
+      if (isDemo && currentViolationTypeLength >= violationTypeLimit) {
         throw new BadRequestException(
           'Jumlah Jenis Pelanggaran Melebihi Batas Aplikasi Demo',
         );
       }
+      // Remove duplicates from items by name
       const names = Array.from(new Set(items.map((i) => i.name)));
+      // Find which names already exist
       const exists = await queryRunner.manager.find(ViolationTypeEntity, {
         where: { name: In(names), school: { id: school.id } },
       });
+      // Names that do not exist yet
       const non_exists = names.filter((n) => {
         return !exists.find((e) => e.name === n);
       });
+      // Filter the items to get only new unique ones
       const classes = items.filter((i) => non_exists.includes(i.name));
-      let violations = classes.map((n) => {
+
+      // Calculate how many new VT can be accepted
+      let allowedToInsert = classes.length;
+      if (isDemo) {
+        const availableSlots = violationTypeLimit - currentViolationTypeLength;
+        if (availableSlots <= 0) {
+          allowedToInsert = 0;
+        } else if (classes.length > availableSlots) {
+          allowedToInsert = availableSlots;
+        }
+      }
+
+      // Only insert as many as allowed
+      const violations = classes.slice(0, allowedToInsert).map((n) => {
         const data = new ViolationTypeEntity();
         data.name = n.name;
         data.school = school;
@@ -97,15 +116,16 @@ export class ViolationTypeRepository extends Repository<ViolationTypeEntity> {
         data.point = n.point;
         return data;
       });
-      if (isDemo) {
-        violations = violations.splice(10 - violationTypeLength);
+
+      // Only save if there are violations to insert
+      if (violations.length > 0) {
+        await queryRunner.manager.save(violations);
       }
-      await queryRunner.manager.save(violations);
       await queryRunner.commitTransaction();
-    } catch (error) {
+    } catch (error: any) {
       await queryRunner.rollbackTransaction();
       console.log(error);
-      if (error.response.statusCode === 400) {
+      if (error?.response?.statusCode === 400) {
         throw new BadRequestException(error.message);
       }
       throw new InternalServerErrorException('internal server error');
