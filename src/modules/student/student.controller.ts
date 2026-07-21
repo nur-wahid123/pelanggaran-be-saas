@@ -27,7 +27,7 @@ import { RoleEnum } from 'src/commons/enums/role.enum';
 @Controller('student')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class StudentController {
-  constructor(private readonly studentService: StudentService) {}
+  constructor(private readonly studentService: StudentService) { }
 
   @Post('create')
   @SetRole(RoleEnum.ADMIN, RoleEnum.SUPERADMIN)
@@ -72,8 +72,9 @@ export class StudentController {
   findAllSearch(
     @Query() query: FilterDto,
     @Query() pageOptionsDto: PageOptionsDto,
+    @Payload() payload: JwtPayload,
   ) {
-    return this.studentService.findAllSearch(query, pageOptionsDto);
+    return this.studentService.findAllSearch(query, pageOptionsDto, Number(payload.school_id));
   }
 
   @Get('detail/:id')

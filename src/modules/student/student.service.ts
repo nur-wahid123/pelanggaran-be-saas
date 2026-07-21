@@ -55,10 +55,11 @@ export class StudentService {
     }
   }
 
-  async findAllSearch(query: FilterDto, pageOptionsDto: PageOptionsDto) {
+  async findAllSearch(query: FilterDto, pageOptionsDto: PageOptionsDto, schoolId: number) {
     const [data, itemCount] = await this.studentRepository.findAllStudentSearch(
       query,
       pageOptionsDto,
+      schoolId
     );
 
     const meta = new PageMetaDto({ pageOptionsDto, itemCount });

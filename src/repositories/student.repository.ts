@@ -53,6 +53,7 @@ export class StudentRepository extends Repository<StudentEntity> {
   findAllStudentSearch(
     query: FilterDto,
     pageOptionsDto: PageOptionsDto,
+    schoolId: number
   ): Promise<[StudentEntity[], number]> {
     const { search } = query;
     const { page, take, skip } = pageOptionsDto;
@@ -60,12 +61,14 @@ export class StudentRepository extends Repository<StudentEntity> {
     const Qb = this.createQueryBuilder('student')
       .select(['student.id', 'student.name', 'student.schoolStudentId', 'student.nationalStudentId', 'studentClass.id', 'studentClass.name'])
       .leftJoin('student.studentClass', 'studentClass')
+      .leftJoin('student.school', 'school')
       .where((qb) => {
         if (search) {
           qb.andWhere('LOWER(student.name) LIKE LOWER(:search)', {
             search: `%${search}%`,
           });
         }
+        qb.andWhere('school.id = :schoolId', { schoolId })
       })
       .orderBy('student.name', Order.ASC);
     if (page && take) {
