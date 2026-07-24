@@ -69,7 +69,7 @@ export class SchoolController {
 
   @Get('detail-admin/:id')
   @UseGuards(PermissionGuard)
-  @SetRole(RoleEnum.ADMIN)
+  @SetRole(RoleEnum.ADMIN, RoleEnum.USER)
   findOne(@Param('id') id: string, @Payload() payload: JwtPayload) {
     return this.schoolService.findOne(+id, Number(payload.school_id));
   }
