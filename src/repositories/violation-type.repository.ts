@@ -69,10 +69,10 @@ export class ViolationTypeRepository extends Repository<ViolationTypeEntity> {
       await queryRunner.startTransaction();
       const school = await queryRunner.manager.findOne(SchoolEntity, {
         where: { id: schoolId },
-        select: { id: true, isDemo: true, violationTypeLimit: true },
+        relations: { mode: true },
       });
-      const isDemo = school.isDemo;
-      const violationTypeLimit = school.violationTypeLimit;
+      const isDemo = school.getEffectiveIsDemo();
+      const violationTypeLimit = school.getEffectiveViolationTypeLimit();
       // Current count of violation types for the school
       const currentViolationTypeLength = await queryRunner.manager.count(
         ViolationTypeEntity,
@@ -80,7 +80,7 @@ export class ViolationTypeRepository extends Repository<ViolationTypeEntity> {
       );
       if (isDemo && currentViolationTypeLength >= violationTypeLimit) {
         throw new BadRequestException(
-          'Jumlah Jenis Pelanggaran Melebihi Batas Aplikasi Demo',
+          'Jumlah Jenis Pelanggaran Melebihi Batas Aplikasi',
         );
       }
       // Remove duplicates from items by name
@@ -186,15 +186,15 @@ export class ViolationTypeRepository extends Repository<ViolationTypeEntity> {
       await queryRunner.startTransaction();
       const school = await queryRunner.manager.findOne(SchoolEntity, {
         where: { id: schoolId },
-        select: { id: true, isDemo: true, violationTypeLimit: true },
+        relations: { mode: true },
       });
-      const isDemo = school.isDemo;
+      const isDemo = school.getEffectiveIsDemo();
       if (isDemo) {
         const violationTypeLength =
           await queryRunner.manager.count(ViolationTypeEntity, { where: { school: { id: schoolId }, deletedAt: IsNull() } });
-        if (violationTypeLength >= school.violationTypeLimit) {
+        if (violationTypeLength >= school.getEffectiveViolationTypeLimit()) {
           throw new BadRequestException(
-            'Jumlah Jenis Pelanggaran Melebihi Batas Aplikasi Demo',
+            'Jumlah Jenis Pelanggaran Melebihi Batas Aplikasi',
           );
         }
       }

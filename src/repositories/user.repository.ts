@@ -116,13 +116,13 @@ export class UserRepository extends Repository<UserEntity> {
       await queryRunner.startTransaction();
       const school = await queryRunner.manager.findOne(SchoolEntity, {
         where: { id: schoolId },
-        select: { isDemo: true, id: true, userLimit: true },
+        relations: { mode: true },
       });
       const userLength = await queryRunner.manager.count(UserEntity, {
         where: { school: { id: schoolId } },
       });
-      if (school.isDemo && userLength >= school.userLimit) {
-        throw new BadRequestException('Aplikasi Demo Tidak Diperbolehkan');
+      if (school.getEffectiveIsDemo() && userLength >= school.getEffectiveUserLimit()) {
+        throw new BadRequestException('Jumlah Pengguna Melebihi Batas Aplikasi');
       }
       await queryRunner.manager.save(newUser);
       await queryRunner.commitTransaction();
@@ -168,7 +168,7 @@ export class UserRepository extends Repository<UserEntity> {
 
     const user = await this.findOne({
       where: whereCondition,
-      relations: { school: true },
+      relations: { school: { mode: true } },
       select: {
         id: true,
         name: true,
@@ -183,6 +183,11 @@ export class UserRepository extends Repository<UserEntity> {
           isActive: true,
           image: true,
           slug: true,
+          mode: {
+            id: true,
+            name: true,
+            isDemo: true,
+          }
         },
       },
     });

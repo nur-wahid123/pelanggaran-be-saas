@@ -250,15 +250,15 @@ export class StudentRepository extends Repository<StudentEntity> {
       await queryRunner.startTransaction();
       const school = await queryRunner.manager.findOne(SchoolEntity, {
         where: { id: schoolId },
-        select: { id: true, isDemo: true },
+        relations: { mode: true },
       });
-      const isDemo = school.isDemo;
+      const isDemo = school.getEffectiveIsDemo();
       const studentLength = await queryRunner.manager.count(StudentEntity, {
         where: { school: { id: school.id } },
       });
-      if (isDemo && studentLength >= school.studentsLimit) {
+      if (isDemo && studentLength >= school.getEffectiveStudentsLimit()) {
         throw new BadRequestException(
-          'Jumlah Siswa Melebihi Batas Aplikasi Demo',
+          'Jumlah Siswa Melebihi Batas Aplikasi',
         );
       }
       const existsStudents = await this.extractNisn(
@@ -337,16 +337,16 @@ export class StudentRepository extends Repository<StudentEntity> {
       await queryRunner.startTransaction();
       const school = await queryRunner.manager.findOne(SchoolEntity, {
         where: { id: schoolId },
-        select: { id: true, isDemo: true, studentsLimit: true },
+        relations: { mode: true },
       });
-      const isDemo = school.isDemo;
+      const isDemo = school.getEffectiveIsDemo();
       if (isDemo) {
         const studentLength = await queryRunner.manager.count(StudentEntity, {
           where: { school: { id: school.id } },
         });
-        if (studentLength >= school.studentsLimit) {
+        if (studentLength >= school.getEffectiveStudentsLimit()) {
           throw new BadRequestException(
-            'Jumlah Siswa Melebihi Batas Aplikasi Demo',
+            'Jumlah Siswa Melebihi Batas Aplikasi',
           );
         }
       }

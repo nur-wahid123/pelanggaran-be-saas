@@ -103,15 +103,15 @@ export class ClassRepository extends Repository<ClassEntity> {
       await queryRunner.startTransaction();
       const school = await queryRunner.manager.findOne(SchoolEntity, {
         where: { id: schoolId },
-        select: { id: true, isDemo: true, classesLimit: true },
+        relations: { mode: true },
       });
-      const isDemo = school.isDemo;
+      const isDemo = school.getEffectiveIsDemo();
       const classEntityLength = await queryRunner.manager.count(ClassEntity, {
         where: { school: { id: school.id } },
       });
-      if (isDemo && classEntityLength >= school.classesLimit) {
+      if (isDemo && classEntityLength >= school.getEffectiveClassesLimit()) {
         throw new BadRequestException(
-          'Jumlah Jenis Pelanggaran Melebihi Batas Aplikasi Demo',
+          'Jumlah Kelas Melebihi Batas Aplikasi',
         );
       }
       await queryRunner.manager.save(newClass);

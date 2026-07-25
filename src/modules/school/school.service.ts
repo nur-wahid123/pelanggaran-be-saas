@@ -3,6 +3,7 @@ import { CreateSchoolDto } from './dto/create-school.dto';
 import { UpdateSchoolDto } from './dto/update-school.dto';
 import { JwtPayload } from '../auth/jwt-payload.interface';
 import { SchoolEntity } from 'src/entities/school.entity';
+import { SchoolModeEntity } from 'src/entities/school-mode.entity';
 import { toYYYYMM } from 'src/commons/utils/date.util';
 import { UserEntity } from 'src/entities/user.entity';
 import { RoleEnum } from 'src/commons/enums/role.enum';
@@ -46,6 +47,7 @@ export class SchoolService {
       userUsername,
       violationLimit,
       violationTypeLimit,
+      modeId,
     } = createSchoolDto;
 
     // Create and populate the SchoolEntity
@@ -66,6 +68,25 @@ export class SchoolService {
     school.userLimit = userLimit;
     school.violationTypeLimit = violationTypeLimit;
     school.createdBy = Number(payload.sub);
+
+    // Resolve and assign SchoolMode
+    const manager = this.schoolRepository.manager;
+    if (modeId) {
+      const mode = await manager.findOne(SchoolModeEntity, {
+        where: { id: modeId },
+      });
+      if (mode) {
+        school.mode = mode;
+      }
+    } else {
+      const defaultModeName = isDemo ? 'Demo' : 'Normal';
+      const mode = await manager.findOne(SchoolModeEntity, {
+        where: { name: defaultModeName },
+      });
+      if (mode) {
+        school.mode = mode;
+      }
+    }
 
     const user = new UserEntity();
     user.username = userUsername;
@@ -164,6 +185,7 @@ export class SchoolService {
       }
       const data = await this.schoolRepository.createQueryBuilder('school')
         .leftJoin('school.users', 'user')
+        .leftJoin('school.mode', 'mode')
         .select([
           'school.id',
           'school.name',
@@ -184,7 +206,11 @@ export class SchoolService {
           'user.name',
           'user.isActive',
           'user.email',
-          'user.role'
+          'user.role',
+          'mode.id',
+          'mode.name',
+          'mode.description',
+          'mode.isDemo',
         ])
         .loadRelationCountAndMap('school.class_count', 'school.classes')
         .loadRelationCountAndMap('school.students_count', 'school.students')

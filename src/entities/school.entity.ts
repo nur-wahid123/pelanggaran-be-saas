@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { Expose } from 'class-transformer';
 import { CommonBaseEntity } from './common-base.entity';
 import { ClassEntity } from './class.entity';
@@ -6,6 +6,7 @@ import { ViolationEntity } from './violation.entity';
 import { ViolationTypeEntity } from './violation-type.entity';
 import { UserEntity } from './user.entity';
 import { StudentEntity } from './student.entity';
+import { SchoolModeEntity } from './school-mode.entity';
 
 export function getSchool(id: number): SchoolEntity {
   const school = new SchoolEntity();
@@ -113,4 +114,44 @@ export class SchoolEntity extends CommonBaseEntity {
   )
   @Expose({ name: 'violation_types' })
   public violationTypes: ViolationTypeEntity[];
+
+  @ManyToOne(() => SchoolModeEntity, (mode) => mode.schools, { nullable: true })
+  @JoinColumn({ name: 'mode_id' })
+  @Expose({ name: 'mode' })
+  public mode?: SchoolModeEntity;
+
+  // effective limits helpers
+  getEffectiveStudentsLimit(): number {
+    return this.studentsLimit !== null && this.studentsLimit !== undefined
+      ? this.studentsLimit
+      : (this.mode?.studentsLimit ?? 999999);
+  }
+
+  getEffectiveViolationTypeLimit(): number {
+    return this.violationTypeLimit !== null && this.violationTypeLimit !== undefined
+      ? this.violationTypeLimit
+      : (this.mode?.violationTypeLimit ?? 999999);
+  }
+
+  getEffectiveViolationLimit(): number {
+    return this.violationLimit !== null && this.violationLimit !== undefined
+      ? this.violationLimit
+      : (this.mode?.violationLimit ?? 999999);
+  }
+
+  getEffectiveClassesLimit(): number {
+    return this.classesLimit !== null && this.classesLimit !== undefined
+      ? this.classesLimit
+      : (this.mode?.classesLimit ?? 999999);
+  }
+
+  getEffectiveUserLimit(): number {
+    return this.userLimit !== null && this.userLimit !== undefined
+      ? this.userLimit
+      : (this.mode?.userLimit ?? 999999);
+  }
+
+  getEffectiveIsDemo(): boolean {
+    return this.mode ? this.mode.isDemo : this.isDemo;
+  }
 }

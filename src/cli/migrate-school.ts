@@ -73,6 +73,9 @@ async function run() {
             isActive: true,
             isDemo: false,
             violationLimit: 999999,
+            userLimit: 999999,
+            classLimit: 999999,
+            studentLimit: 999999,
             startDate: '2024-07-17',
             violationTypeLimit: 999999,
         });

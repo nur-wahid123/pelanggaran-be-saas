@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { UserLoginDto } from './dto/login-user.dto';
 import { UserEntity } from 'src/entities/user.entity';
+import { SchoolModeEntity } from 'src/entities/school-mode.entity';
 import { Token } from 'src/commons/types/token.type';
 import { UserRepository } from 'src/repositories/user.repository';
 import { JwtService } from '@nestjs/jwt';
@@ -62,13 +63,18 @@ export class AuthService {
     // Update user profile
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      select: { id: true, name: true, username: true, email: true },
+      relations: { school: { mode: true } },
     });
     if (!user) {
       throw new BadRequestException('User not found.');
     }
 
-    if (body.username) user.username = body.username;
+    if (body.username && body.username !== user.username) {
+      if (user.school?.getEffectiveIsDemo()) {
+        throw new BadRequestException('Aplikasi Demo tidak diperbolehkan mengubah username.');
+      }
+      user.username = body.username;
+    }
     if (body.email) user.email = body.email;
     if (body.name) user.name = body.name;
 
@@ -97,10 +103,13 @@ export class AuthService {
     } else {
       user = await this.userRepository.findOne({
         where: { id: userId, school: { id: schoolId } },
-        select: { id: true, password: true },
+        relations: { school: { mode: true } },
       });
     }
     if (user) {
+      if (user.school?.getEffectiveIsDemo()) {
+        throw new BadRequestException('Aplikasi Demo tidak diperbolehkan mengubah password.');
+      }
       const isMatch = await this.userRepository.isPasswordMatch(
         body.oldPassword,
         user.password,
@@ -156,7 +165,48 @@ export class AuthService {
   }
 
   async init() {
-    // Check if a superadmin user already exists
+    // 1. Seed school modes first
+    const manager = this.userRepository.manager;
+    const modes = ['Demo', 'Normal', 'Expert'];
+    for (const modeName of modes) {
+      const modeExists = await manager.findOne(SchoolModeEntity, {
+        where: { name: modeName },
+      });
+      if (!modeExists) {
+        const mode = new SchoolModeEntity();
+        mode.name = modeName;
+        if (modeName === 'Demo') {
+          mode.studentsLimit = 100;
+          mode.classesLimit = 50;
+          mode.violationTypeLimit = 50;
+          mode.violationLimit = 1000;
+          mode.userLimit = 50;
+          mode.isDemo = true;
+          mode.description = 'Demo mode with limited capacity';
+        } else if (modeName === 'Normal') {
+          mode.studentsLimit = 2000;
+          mode.classesLimit = 1000;
+          mode.violationTypeLimit = 100;
+          mode.violationLimit = 10000;
+          mode.userLimit = 1000;
+          mode.isDemo = false;
+          mode.description = 'Normal school tier with standard capacity';
+        } else if (modeName === 'Expert') {
+          mode.studentsLimit = 999999;
+          mode.classesLimit = 999999;
+          mode.violationTypeLimit = 999999;
+          mode.violationLimit = 999999;
+          mode.userLimit = 999999;
+          mode.isDemo = false;
+          mode.description = 'Expert tier with unlimited capacity';
+        }
+        mode.createdBy = 1;
+        await manager.save(SchoolModeEntity, mode);
+        console.log(`Created default school mode: ${modeName}`);
+      }
+    }
+
+    // 2. Check if a superadmin user already exists
     const superadminExists = await this.userRepository.findOne({
       where: { role: RoleEnum.SUPERADMIN },
       select: { id: true },
@@ -221,7 +271,7 @@ export class AuthService {
       email: user.email,
       role: user.role,
       school_id: user.role === RoleEnum.SUPERADMIN ? 0 : user.school.id,
-      is_demo: user.role === RoleEnum.SUPERADMIN ? false : user.school.isDemo,
+      is_demo: user.role === RoleEnum.SUPERADMIN ? false : user.school.getEffectiveIsDemo(),
       start_date:
         user.role === RoleEnum.SUPERADMIN ? false : user.school.startDate,
       image: user.role === RoleEnum.SUPERADMIN ? false : user.school.image,

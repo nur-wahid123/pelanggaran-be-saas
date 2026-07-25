@@ -8,6 +8,7 @@ import {
   IsStrongPassword,
   Matches,
   MinLength,
+  IsOptional,
 } from 'class-validator';
 import { Expose } from 'class-transformer';
 
@@ -112,4 +113,9 @@ export class CreateSchoolDto {
   })
   @Expose({ name: 'user_password' })
   public userPassword: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Expose({ name: 'mode_id' })
+  public modeId?: number;
 }

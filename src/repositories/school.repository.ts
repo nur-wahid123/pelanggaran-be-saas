@@ -1,4 +1,5 @@
 import { SchoolEntity } from 'src/entities/school.entity';
+import { SchoolModeEntity } from 'src/entities/school-mode.entity';
 import { DataSource, Repository } from 'typeorm';
 import {
   InternalServerErrorException,
@@ -218,6 +219,19 @@ export class SchoolRepository extends Repository<SchoolEntity> {
         school.userLimit = updateSchoolDto.userLimit;
       if (updateSchoolDto.violationTypeLimit !== undefined)
         school.violationTypeLimit = updateSchoolDto.violationTypeLimit;
+      if (updateSchoolDto.modeId !== undefined) {
+        if (updateSchoolDto.modeId === null) {
+          school.mode = null;
+        } else {
+          const mode = await qR.manager.findOne(SchoolModeEntity, {
+            where: { id: updateSchoolDto.modeId },
+          });
+          if (!mode) {
+            throw new BadRequestException('Mode not found');
+          }
+          school.mode = mode;
+        }
+      }
 
       school.updatedBy = userId;
       await qR.manager.save(school);

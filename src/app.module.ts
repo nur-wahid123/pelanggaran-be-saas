@@ -27,6 +27,7 @@ import { ImageLinkRepository } from './repositories/image-link.repository';
 import { MinioService } from './modules/violation/minio.service';
 import { LoggerService } from './modules/logger/logger.service';
 import { LoggerRepository } from './repositories/logger.repository';
+import { SchoolModeModule } from './modules/school-mode/school-mode.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { LoggerRepository } from './repositories/logger.repository';
     UserModule,
     DashboardModule,
     SchoolModule,
+    SchoolModeModule,
     RedisModule,
     LoggerModule,
   ],

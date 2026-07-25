@@ -62,16 +62,16 @@ export class ViolationRepository extends Repository<ViolationEntity> {
       await qR.startTransaction();
       const school = await qR.manager.findOne(SchoolEntity, {
         where: { id: schoolId },
-        select: { id: true, isDemo: true, violationLimit: true },
+        relations: { mode: true },
       });
-      const isDemo = school.isDemo;
+      const isDemo = school.getEffectiveIsDemo();
       if (isDemo) {
         const violationLength = await qR.manager.count(ViolationEntity, {
           where: { school: { id: school.id } },
         });
-        if (violationLength >= school.violationLimit) {
+        if (violationLength >= school.getEffectiveViolationLimit()) {
           throw new BadRequestException(
-            'Dilarang Menambah Pelanggaran lebih 10 pada Aplikasi Demo',
+            'Jumlah Pelanggaran Melebihi Batas Aplikasi',
           );
         }
       }
