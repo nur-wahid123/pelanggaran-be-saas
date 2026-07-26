@@ -20,15 +20,21 @@ import { DataSource, Repository } from 'typeorm';
 
 @Injectable()
 export class ViolationRepository extends Repository<ViolationEntity> {
-  async removeAll() {
+  async removeAll(userId: number) {
     const qr = this.datasource.createQueryRunner();
     try {
       await qr.connect();
       await qr.startTransaction();
+      const user = await qr.manager.findOne(UserEntity, { where: { id: userId }, select: { id: true, school: { id: true } }, relations: { school: true } })
+      if (!user || !user.school) {
+        throw new BadRequestException('User Atau Sekolah Tidak Ditemukan')
+      }
       const allViolations = await qr.manager
         .createQueryBuilder(ViolationEntity, 'violation')
         .leftJoin('violation.image', 'image')
-        .select(['violation.id', 'image.id'])
+        .leftJoin('violation.school', 'school')
+        .select(['violation.id', 'image.id', 'school.id'])
+        .where('school.id = :schoolId', { schoolId: user.school.id })
         .getMany();
       const allImageIds = allViolations
         .filter((v) => v.image !== null && v.image !== undefined)
