@@ -18,7 +18,7 @@ import { LoggerService } from '../logger/logger.service';
 @Injectable()
 export class ViolationService {
   async removeAll(userId: number) {
-    const res = await this.violationRepository.removeAll();
+    const res = await this.violationRepository.removeAll(userId);
     this.loggerService.crateLog({
       type: LogTypeEnum.DELETE_VIOLATION,
       userId,
@@ -170,7 +170,7 @@ export class ViolationService {
     private readonly violationRepository: ViolationRepository,
     private readonly redis: RedisService,
     private readonly loggerService: LoggerService,
-  ) {}
+  ) { }
 
   private readonly cacheVersionName = 'violation:version';
   private readonly cacheNameVersionViolationType = `violation-type:version`;
