@@ -23,7 +23,7 @@ import { PermissionGuard } from 'src/commons/guards/permission.guard';
 @Controller('violation')
 @UseGuards(JwtAuthGuard, PermissionGuard)
 export class ViolationController {
-  constructor(private readonly violationService: ViolationService) {}
+  constructor(private readonly violationService: ViolationService) { }
 
   @Post('create')
   createVioation(
